@@ -176,8 +176,8 @@ $canAccessDashboard = in_array($userRole, ['Admin', 'Supervisor', 'Manager']);
                 <div class="logo-area">
                     <div class="logo-icon"><i class="bi bi-shop"></i></div>
                     <div class="logo-text">
-                        <h3>Butchery Pro</h3>
-                        <p>Katakala Butchery & Restaurant</p>
+                        <h3>Program Monitoring</h3>
+                        <p>Monitoring Trainings, Meetings, Mentorship and particpants costs</p>
                     </div>
                 </div>
             </div>
@@ -196,19 +196,19 @@ $canAccessDashboard = in_array($userRole, ['Admin', 'Supervisor', 'Manager']);
                     <div class="nav-section-title">Main</div>
                     <?php if ($canAccessDashboard): ?>
                     <div class="nav-item">
-                        <a href="../dashboard/admin_dashboard.php" target="contentFrame" class="nav-link" style="background: #FFFF00; color: #000000;" onclick="handleNavClick()">
+                        <a href="../dashboard/dashboard.php" target="contentFrame" class="nav-link" style="background: #FFFF00; color: #000000;" onclick="handleNavClick()">
                             <i class="fa fa-chart-pie"></i> Dashboard
                         </a>
                     </div>
                     <?php endif; ?>
                     <div class="nav-item">
-                        <a href="../sales/orders.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
-                            <i class="fas fa-shopping-basket"></i> POS
+                        <a href="../trainings/view_training.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
+                            <i class="fas fa-shopping-basket"></i> Trainings
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../sales/direct_orders.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <i class="fa fa-shopping-cart"></i> Quick Sales
+                        <a href="../meetings/view_meetings.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <i class="fa fa-shopping-cart"></i> Meetings
                         </a>
                     </div>
                     <div class="nav-item">
@@ -218,47 +218,19 @@ $canAccessDashboard = in_array($userRole, ['Admin', 'Supervisor', 'Manager']);
                     </div>
                 </div>
 
-                <!-- Inventory Section -->
+                <!-- Staff Section -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Inventory</div>
+                    <div class="nav-section-title">Staff</div>
                     <div class="nav-item">
-                        <a href="../stocks/viewstocks_sum.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <i class="fa fa-boxes"></i> Stock Management
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="../stocks/view_categories.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/cow.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Categories
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="../views/view_product.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/boxes.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Products
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="../views/view_suppliers.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/truck-loading.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Suppliers
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Sales Section -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Sales</div>
-                    <div class="nav-item">
-                        <a href="../sales/view_order.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/cash-register.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Cashier
+                            View Staff
                         </a>
                     </div>
                     <div class="nav-item">
                         <a href="../views/view_credit_sales.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/credit-card.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Credit Sales
+                            ##########
                         </a>
                     </div>
                 </div>
@@ -281,7 +253,19 @@ $canAccessDashboard = in_array($userRole, ['Admin', 'Supervisor', 'Manager']);
                     <div class="nav-item">
                         <a href="../receipts/view_receipts.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/print.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Receipts
+                            Integration
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../receipts/view_receipts.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/print.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Transition
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../receipts/view_receipts.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/print.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Assets
                         </a>
                     </div>
                 </div>

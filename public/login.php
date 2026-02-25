@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['photo']         = $user['photo'];
                 $_SESSION['last_activity'] = time();
 
-                header("Location: ../dashboard/dashboard.php");
+                header("Location: ../public/layout.php");
                 exit();
             } else {
                 $new_attempts = $user['login_attempts'] + 1;
