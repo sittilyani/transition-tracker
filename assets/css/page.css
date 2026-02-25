@@ -1,0 +1,43 @@
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+
+.sidenav{height:100vh;width:300px;position:fixed;top:0;left:0;z-index:1;background:#0D1A63;overflow-x:hidden;padding-top:20px;box-shadow:2px 0 10px rgba(0,0,0,.1)}
+.sidenav h2{color:#FFFFFF;text-align:center;margin-bottom:30px;padding:0 15px;font-size:22px}
+.sidenav a{display:flex;align-items:center;padding:15px 25px;font-size:16px;color:rgba(255,255,255,.8);text-decoration:none;border-left:4px solid transparent;transition:.3s}
+.sidenav a i{margin-right:12px;font-size:18px;width:25px;text-align:center}
+.sidenav a:hover,.sidenav a.active{background:rgba(255,255,255,.15);color:#fff;border-left-color:#4facfe}
+.sidenav a.home-link{background:#c00;font-weight:bold}
+.settings-icon{font-size:26px;color:#fff;text-align:center;margin-top:5px}
+
+.main{margin-left:300px;padding:30px;width:calc(100% - 300px);min-height:100vh}
+
+.content-header{display:flex;justify-content:space-between;align-items:center;background: #9CCFFF; margin-top: 0; margin-bottom:30px;padding:15px;border-bottom:1px solid #e0e0e0}
+.content-header h2{color:#0D1A63;font-weight:600}
+
+.user-info{display:flex;align-items:center;gap:15px}
+.user-info span{font-size:14px}
+.current-time{background:#f8f9fa;padding:5px 10px;border-radius:4px;font-size:14px}
+
+.logout-btn{background:#dc3545;color:#fff;padding:5px 10px;border-radius:4px;font-size:14px;text-decoration:none;transition:.3s}
+.logout-btn:hover{background:#c82333}
+
+.content-area{background:#fff;border-radius:8px;padding:25px;box-shadow:0 4px 12px rgba(0,0,0,.05);min-height:400px}
+
+.welcome-message .sops{background:#fff;padding:30px;font-size:18px;font-weight:bold;line-height:2}
+
+.text-primary{color:#0D1A63}
+
+@keyframes spinner-border{to{transform:rotate(360deg)}}
+.spinner-border{display:inline-block;width:3rem;height:3rem;vertical-align:text-bottom;border:.25em solid currentColor;border-right-color:transparent;border-radius:50%;animation:spinner-border .1s linear infinite}
+
+.timeout-warning{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff3cd;border:1px solid #ffeaa7;border-radius:5px;padding:20px;z-index:1000;box-shadow:0 0 10px rgba(0,0,0,.1);text-align:center}
+.timeout-warning h4{margin-top:0;color:#856404}
+.timeout-warning p{margin-bottom:15px}
+.timeout-warning button{background:#f0ad4e;border:none;padding:8px 15px;border-radius:4px;color:#fff;cursor:pointer}
+
+@media(max-width:768px){
+    .sidenav{width:100%;height:auto;position:relative;padding-top:20px}
+    .sidenav a{float:left;padding:15px}
+    .main{margin-left:0;width:100%}
+    .content-header{flex-direction:column;align-items:flex-start;gap:10px}
+    .user-info{flex-wrap:wrap}
+}

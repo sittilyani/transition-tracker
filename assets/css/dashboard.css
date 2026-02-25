@@ -1,0 +1,128 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);min-height:100vh}
+h4{color:#0D1A63}
+table{border-collapse:collapse;width:100%}
+td{padding:8px;border:1px solid #ddd}
+
+.dashboard-container{display:grid;grid-template-columns:3fr 1fr 1fr;gap:30px;padding:20px;max-width:90%;margin:20px auto}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;grid-column:1/2}
+
+.card{background:linear-gradient(to right,#9CCFFF,#685AFF,#0D1A63);border-radius:15px; color: #FFF;
+padding:25px;cursor:pointer;position:relative;overflow:hidden;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#667eea,#764ba2)}
+.card.orange::before{background:linear-gradient(90deg,#ff7b7b,#ff416c)}
+.card:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(0,0,0,.15)}
+.card:focus,.mobile-menu-toggle:focus{outline:3px solid #667eea;outline-offset:2px}
+.card-content{display:flex;align-items:center;justify-content:space-between;flex:1}
+.card-content h3{font-size:35px;font-weight:bold;color:#FFF;margin:0;line-height:1.3}
+.card-icon{font-size:50px;color:#fff}
+.card:hover .card-icon{transform:scale(1.1)}
+.more-info{margin-top:15px;color:#718096;text-decoration:none;font-size:18px;display:flex;align-items:center;gap:5px;transition:color .3s}
+.more-info:hover{color:#667eea}
+
+.sidebar{display:flex;flex-direction:column;gap:20px}
+.sidebar-card{background:#fff;border-radius:15px;padding:20px;box-shadow:0 8px 25px rgba(0,0,0,.1)}
+.sidebar-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.15)}
+.sidebar-card h4{font-size:18px;font-weight:600;color:#2d3748;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
+
+.balances-table{width:100%;border-collapse:collapse;font-size:14px}
+.balances-table thead th{background:#f7fafc;color:#4a5568;padding:12px 8px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0}
+.balances-table tbody tr{border-bottom:1px solid #e2e8f0}
+.balances-table tbody tr:hover{background:#f7fafc}
+.balances-table tbody td{padding:10px 8px;color:#4a5568}
+.balances-table tbody td:last-child{font-weight:600;color:#2d3748}
+
+.birthdays-list{display:flex;flex-direction:column;gap:10px}
+.birthday-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f7fafc;border-radius:8px}
+.birthday-item:hover{background:#edf2f7}
+.birthday-item span:first-child{color:#4a5568;font-weight:500}
+.birthday-date{background:#667eea;color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.birthday-date2 a{text-decoration:none;color:#fff}
+.count-retro a{background:#722182;color:#fff;padding:8px 20px;border-radius:20px;text-align:center;font-size:14px;font-weight:800;text-decoration:none}
+.mobile-menu-toggle{display:none;position:fixed;top:20px;right:20px;z-index:1001;background:#667eea;color:#fff;border:none;border-radius:50%;width:50px;height:50px;font-size:20px;cursor:pointer;transition:all .3s;flex-direction:column;justify-content:center;align-items:center}
+.mobile-menu-toggle:hover{background:#5a67d8;transform:scale(1.1)}
+.mobile-menu-toggle.active{background:#e53e3e}
+.mobile-menu-toggle span{display:block;width:25px;height:3px;background:currentColor;margin:3px 0;transition:all .3s;transform-origin:center}
+.mobile-menu-toggle.active span:nth-child(1){transform:rotate(45deg) translate(6px,6px)}
+.mobile-menu-toggle.active span:nth-child(2){opacity:0}
+.mobile-menu-toggle.active span:nth-child(3){transform:rotate(-45deg) translate(6px,-6px)}
+
+.circle-oblong{background:red;border-radius:50em;padding:.2em .6em;color:#fff;font-weight:bold;display:inline-block}
+.circle-oblong a{color:#fff;text-decoration:none}
+
+@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
+.blink-animation{animation:blink 1s infinite}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:1024px){
+    .dashboard-container{grid-template-columns:1fr;gap:15px;padding:15px}
+    .cards-grid{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
+    .card{min-height:130px;padding:20px}
+    .card-content h3{font-size:16px}
+    .card-icon{font-size:30px}
+    .sidebar{grid-column:1/2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;gap:15px}
+    .sidebar-card{padding:15px}
+    .balances-table{font-size:13px}
+    .balances-table thead th,.balances-table tbody td{padding:8px 6px}
+}
+
+@media(max-width:768px){
+    .mobile-menu-toggle{display:flex}
+    .dashboard-container{grid-template-columns:1fr;padding:10px;gap:15px;padding-top:80px}
+    .cards-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+    .card{min-height:120px;padding:15px;border-radius:12px}
+    .card-content{flex-direction:column;align-items:flex-start;gap:10px}
+    .card-content h3{font-size:15px}
+    .card-icon{font-size:25px;align-self:flex-end}
+    .more-info{margin-top:10px;font-size:12px}
+    .sidebar{display:none;position:fixed;top:0;left:0;width:100%;height:100vh;background:rgba(0,0,0,.95);z-index:1000;overflow-y:auto;padding:80px 20px 20px;transition:all .3s}
+    .sidebar.active{display:block;animation:fadeIn .3s ease}
+    .sidebar .sidebar-card{background:#fff;margin-bottom:15px;animation:slideIn .4s ease}
+    .sidebar .sidebar-card:nth-child(1){animation-delay:.1s}
+    .sidebar .sidebar-card:nth-child(2){animation-delay:.2s}
+    .sidebar-card{margin-bottom:15px;padding:15px;border-radius:12px}
+    .sidebar-card h4{font-size:16px;margin-bottom:12px}
+    .balances-table{font-size:12px}
+    .balances-table thead th,.balances-table tbody td{padding:6px 4px}
+    .birthday-item{padding:10px;flex-direction:column;align-items:flex-start;gap:5px}
+    .birthday-date{align-self:flex-end}
+}
+
+@media(max-width:480px){
+    .dashboard-container{padding:8px;gap:12px}
+    .cards-grid{grid-template-columns:1fr;gap:10px}
+    .card{min-height:100px;padding:12px}
+    .card-content h3{font-size:14px}
+    .card-icon{font-size:22px}
+    .sidebar-card{padding:12px}
+    .sidebar-card h4{font-size:15px}
+    .balances-table{font-size:11px}
+    .balances-table thead th,.balances-table tbody td{padding:5px 3px}
+    .birthday-item{padding:8px}
+    .birthday-date{font-size:11px;padding:3px 10px}
+}
+
+@media(max-width:360px){
+    .dashboard-container{padding:5px}
+    .card{min-height:90px;padding:10px}
+    .card-content h3{font-size:13px;line-height:1.2}
+    .card-icon{font-size:20px}
+    .more-info{font-size:11px}
+    .sidebar-card{padding:10px}
+    .sidebar-card h4{font-size:14px}
+}
+
+@media(max-height:500px) and (orientation:landscape){
+    .dashboard-container{padding-top:60px}
+    .cards-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+    .card{min-height:80px;padding:10px}
+    .card-content h3{font-size:12px}
+    .card-icon{font-size:18px}
+}
+
+@media print{
+    .mobile-menu-toggle,.more-info{display:none}
+    .card{break-inside:avoid;box-shadow:none;border:1px solid #e2e8f0}
+}
