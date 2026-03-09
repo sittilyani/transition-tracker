@@ -2,7 +2,7 @@
 ob_start();
 session_start();
 include '../includes/config.php';
-include '../includes/header.php';
+include '../includes/session_check.php';
 
 // Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {

@@ -23,7 +23,7 @@ $query = "SELECT ts.*,
           FROM training_sessions ts
           LEFT JOIN courses c ON ts.course_id = c.course_id
           LEFT JOIN course_durations cd ON ts.duration_id = cd.duration_id
-          LEFT JOIN training_types tt ON ts.training_type_id = tt.trainingtype_id
+          LEFT JOIN trainingtypes tt ON ts.trainingtype_id = tt.trainingtype_id
           LEFT JOIN training_locations tl ON ts.location_id = tl.location_id
           LEFT JOIN facilitator_levels fl ON ts.fac_level_id = fl.fac_level_id
           LEFT JOIN counties co ON ts.county_id = co.county_id
@@ -162,7 +162,7 @@ $html = '
     <div class="header">
         <!-- Replace with your company logo -->
         <div class="logo">🏥</div>
-        <div class="company-name">Health Training Institute</div>
+        <div class="company-name">LVCT Health Training Log</div>
         <div class="report-title">Training Session Report</div>
         <div class="session-code">Session Code: ' . htmlspecialchars($session['session_code']) . '</div>
     </div>

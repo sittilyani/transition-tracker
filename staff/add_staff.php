@@ -5,6 +5,21 @@ include '../includes/config.php';
 $msg = "";
 $error = "";
 
+// Fetch staff statuses for dropdown
+$staff_status_result = mysqli_query($conn, "SELECT staff_status_id, staff_status_name FROM staff_status ORDER BY staff_status_name");
+
+// Fetch employment statuses for dropdown
+$employment_status_result = mysqli_query($conn, "SELECT employment_status_id, employment_status_name FROM employment_status ORDER BY employment_status_name");
+
+// Fetch departments for dropdown
+$departments = mysqli_query($conn, "SELECT department_name FROM departments ORDER BY department_name");
+
+// Fetch cadres for dropdown
+$cadres = mysqli_query($conn, "SELECT cadre_name FROM cadres ORDER BY cadre_name");
+
+// Fetch facilities for dropdown
+$facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY facility_name");
+
 if (isset($_POST['submit'])) {
     // Get form data - use proper escaping for all fields
     $first_name = mysqli_real_escape_string($conn, $_POST['first_name']);
@@ -23,18 +38,22 @@ if (isset($_POST['submit'])) {
     $department_name = mysqli_real_escape_string($conn, $_POST['department_name']);
     $cadre_name = mysqli_real_escape_string($conn, $_POST['cadre_name']);
 
+    // Get status names from dropdowns
+    $staff_status_name = mysqli_real_escape_string($conn, $_POST['staff_status_name']);
+    $employment_status_name = mysqli_real_escape_string($conn, $_POST['employment_status_name']);
+
     $created_by = $_SESSION['full_name'];
 
     // Insert query with all fields
     $insert = "INSERT INTO county_staff (
-        first_name, last_name, sex, staff_phone, id_number, email,
+        first_name, last_name, other_name, sex, staff_phone, id_number, email,
         facility_name, county_name, subcounty_name, level_of_care_name,
-        department_name, cadre_name, created_by
+        department_name, cadre_name, status, staff_status, employment_status, created_by
     ) VALUES (
-        '$first_name', '$last_name', '$sex', '$staff_phone',
+        '$first_name', '$last_name', '$other_name', '$sex', '$staff_phone',
         '$id_number', '$email', '$facility_name',
         '$county_name', '$subcounty_name', '$level_of_care_name',
-        '$department_name', '$cadre_name', '$created_by'
+        '$department_name', '$cadre_name', 'active', '$staff_status_name', '$employment_status_name', '$created_by'
     )";
 
     if (mysqli_query($conn, $insert)) {
@@ -45,15 +64,6 @@ if (isset($_POST['submit'])) {
         $error = "Insert Error: " . mysqli_error($conn);
     }
 }
-
-// Fetch departments for dropdown
-$departments = mysqli_query($conn, "SELECT department_name FROM departments ORDER BY department_name");
-
-// Fetch cadres for dropdown
-$cadres = mysqli_query($conn, "SELECT cadre_name FROM cadres ORDER BY cadre_name");
-
-// Fetch facilities for dropdown
-$facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY facility_name");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,10 +89,11 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
             display: flex;
             flex-direction: column;
             align-items: center;
+            background: #f4f7fc;
         }
 
         .container {
-            max-width: 700px;
+            max-width: 800px;
             width: 100%;
             background: white;
             border-radius: 20px;
@@ -199,12 +210,24 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
             transform: translateY(0);
         }
 
+        .section-title {
+            grid-column: span 2;
+            color: #0D1A63;
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
         @media (max-width: 600px) {
             .form-grid {
                 grid-template-columns: 1fr;
             }
 
-            .form-group.full-width {
+            .form-group.full-width,
+            .section-title {
                 grid-column: span 1;
             }
 
@@ -235,13 +258,15 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
 
             <form method="POST" id="staffForm">
                 <div class="form-grid">
-                    <!-- Personal Information -->
+                    <!-- Personal Information Section -->
+                    <div class="section-title">Personal Information</div>
+
                     <div class="form-group">
                         <label>First Name <i>*</i></label>
                         <input type="text" name="first_name" value="<?php echo isset($_POST['first_name']) ? htmlspecialchars($_POST['first_name']) : ''; ?>" required>
                     </div>
 
-                     <div class="form-group">
+                    <div class="form-group">
                         <label>Last Name <i>*</i></label>
                         <input type="text" name="last_name" value="<?php echo isset($_POST['last_name']) ? htmlspecialchars($_POST['last_name']) : ''; ?>" required>
                     </div>
@@ -266,8 +291,8 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
                     </div>
 
                     <div class="form-group">
-                        <label>ID Number</label>
-                        <input type="text" name="id_number" value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : ''; ?>">
+                        <label>ID Number <i>*</i></label>
+                        <input type="text" name="id_number" value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : ''; ?>" required>
                     </div>
 
                     <div class="form-group">
@@ -275,7 +300,9 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
                         <input type="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
                     </div>
 
-                    <!-- Facility Information -->
+                    <!-- Facility Information Section -->
+                    <div class="section-title">Facility Information</div>
+
                     <div class="form-group full-width">
                         <label>Facility <i>*</i></label>
                         <select name="facility_name" id="facility" required>
@@ -307,7 +334,9 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
                         <input type="text" name="level_of_care_name" id="level" value="<?php echo isset($_POST['level_of_care_name']) ? htmlspecialchars($_POST['level_of_care_name']) : ''; ?>" readonly>
                     </div>
 
-                    <!-- Job Information -->
+                    <!-- Job Information Section -->
+                    <div class="section-title">Job Information</div>
+
                     <div class="form-group">
                         <label>Department <i>*</i></label>
                         <select name="department_name" required>
@@ -339,6 +368,41 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
                             <?php endwhile; ?>
                         </select>
                     </div>
+
+                    <!-- Status Information Section -->
+                    <div class="section-title">Status Information</div>
+
+                    <div class="form-group">
+                        <label>Staff Status <i>*</i></label>
+                        <select name="staff_status_name" required>
+                            <option value="">Select Staff Status</option>
+                            <?php
+                            mysqli_data_seek($staff_status_result, 0); // Reset pointer
+                            while ($row = mysqli_fetch_assoc($staff_status_result)):
+                            ?>
+                                <option value="<?php echo htmlspecialchars($row['staff_status_name']); ?>"
+                                    <?php echo (isset($_POST['staff_status_name']) && $_POST['staff_status_name'] == $row['staff_status_name']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($row['staff_status_name']); ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Employment Status <i>*</i></label>
+                        <select name="employment_status_name" required>
+                            <option value="">Select Employment Status</option>
+                            <?php
+                            mysqli_data_seek($employment_status_result, 0); // Reset pointer
+                            while ($row = mysqli_fetch_assoc($employment_status_result)):
+                            ?>
+                                <option value="<?php echo htmlspecialchars($row['employment_status_name']); ?>"
+                                    <?php echo (isset($_POST['employment_status_name']) && $_POST['employment_status_name'] == $row['employment_status_name']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($row['employment_status_name']); ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
                 </div>
 
                 <button type="submit" name="submit" class="btn-submit">
@@ -361,9 +425,9 @@ $facilities = mysqli_query($conn, "SELECT facility_name FROM facilities ORDER BY
                     dataType: 'json',
                     success: function(data) {
                         if (!data.error) {
-                            $('#county').val(data.county_name);
-                            $('#subcounty').val(data.subcounty_name);
-                            $('#level').val(data.level_of_care_name_name);
+                            $('#county').val(data.county_name || '');
+                            $('#subcounty').val(data.subcounty_name || '');
+                            $('#level').val(data.level_of_care_name || '');
                         } else {
                             alert('Error: ' + data.error);
                             $('#county, #subcounty, #level').val('');

@@ -242,12 +242,19 @@ if (!$isAllowed) {
                 </div>
 
                 <!-- Staff Section -->
+                <!-- Staff Section -->
                 <div class="nav-section">
                     <div class="nav-section-title">Staff</div>
                     <div class="nav-item">
                         <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            View Staff
+                            View All Staff
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../staff/employee_profile.php?staff_id=<?php echo isset($_SESSION['staff_id']) ? $_SESSION['staff_id'] : 0; ?>" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/user.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            My Profile
                         </a>
                     </div>
                 </div>
@@ -368,11 +375,11 @@ if (!$isAllowed) {
 
                     <!-- User Dropdown Menu -->
                     <div class="dropdown-menu-custom" id="userMenu">
-                        <a href="../login/profile.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
+                        <a href="../public/profile.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/user.svg" alt="" width="16" height="16">
                             Profile
                         </a>
-                        <a href="../login/reset_password.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
+                        <a href="../public/reset_password.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/shield.svg" alt="" width="16" height="16">
                             Change password
                         </a>

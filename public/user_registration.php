@@ -21,6 +21,22 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $page_title = "User Registration";
+$staff_data = null;
+$id_number = isset($_GET['id_number']) ? trim($_GET['id_number']) : '';
+
+// If ID number is provided, fetch staff details
+if (!empty($id_number) && isset($_GET['fetch'])) {
+    $stmt = $conn->prepare("SELECT * FROM county_staff WHERE id_number = ? AND status = 'active'");
+    $stmt->bind_param('s', $id_number);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $staff_data = $result->fetch_assoc();
+    } else {
+        $_SESSION['error_message'] = "Staff with ID Number $id_number not found or inactive.";
+    }
+    $stmt->close();
+}
 
 // Process form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -31,18 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit;
     }
 
-    // Sanitize and validate input
+    $id_number = trim($_POST['id_number'] ?? '');
     $username = trim($_POST['username'] ?? '');
-    $first_name = trim($_POST['first_name'] ?? '');
-    $last_name = trim($_POST['last_name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $sex = $_POST['sex'] ?? '';
-    $mobile = trim($_POST['mobile'] ?? '');
     $userrole = $_POST['userrole'] ?? '';
 
     // Validate required fields
-    if (empty($username) || empty($first_name) || empty($last_name) || empty($email) || empty($sex) || empty($mobile) || empty($userrole)) {
-        $_SESSION['error_message'] = "All fields except photo are required";
+    if (empty($id_number) || empty($username) || empty($userrole)) {
+        $_SESSION['error_message'] = "ID Number, Username, and User Role are required";
         header("Location: user_registration.php");
         exit;
     }
@@ -59,11 +70,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         header("Location: user_registration.php");
         exit;
     }
+    $check_stmt->close();
 
-    // Handle photo upload as BLOB
-    $photo_blob = null;
+    // Get staff details from county_staff table
+    $staff_stmt = $conn->prepare("SELECT * FROM county_staff WHERE id_number = ? AND status = 'active'");
+    $staff_stmt->bind_param('s', $id_number);
+    $staff_stmt->execute();
+    $staff_result = $staff_stmt->get_result();
 
-    // Handle file upload
+    if ($staff_result->num_rows === 0) {
+        $_SESSION['error_message'] = "Staff with ID Number $id_number not found or inactive.";
+        header("Location: user_registration.php");
+        exit;
+    }
+
+    $staff = $staff_result->fetch_assoc();
+    $staff_stmt->close();
+
+    // Set default password and hash it
+    $default_password = '123456';
+    $hashed_password = password_hash($default_password, PASSWORD_BCRYPT);
+
+    // Handle photo from county_staff or upload
+    $photo_blob = $staff['photo']; // Use existing photo from county_staff
+
+    // Handle new photo upload if provided
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
         $max_size = 5 * 1024 * 1024; // 5MB
@@ -72,27 +103,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $file_type = $_FILES['photo']['type'];
         $file_size = $_FILES['photo']['size'];
 
-        // Validate file type and size
-        if (!in_array($file_type, $allowed_types)) {
-            $_SESSION['error_message'] = "Invalid file type. Only JPEG, PNG, and GIF are allowed.";
-            header("Location: user_registration.php");
-            exit;
+        if (in_array($file_type, $allowed_types) && $file_size <= $max_size) {
+            $photo_blob = file_get_contents($file_tmp);
         }
-
-        if ($file_size > $max_size) {
-            $_SESSION['error_message'] = "File size exceeds 5MB limit.";
-            header("Location: user_registration.php");
-            exit;
-        }
-
-        // Read file content as BLOB
-        $photo_blob = file_get_contents($file_tmp);
-        // Don't escape here, we'll use prepared statement
     }
 
     // Handle webcam photo
-    if (empty($error) && isset($_POST['webcam_photo']) && !empty($_POST['webcam_photo'])) {
-        // Decode base64 image from webcam
+    if (isset($_POST['webcam_photo']) && !empty($_POST['webcam_photo'])) {
         $webcam_data = $_POST['webcam_photo'];
         $webcam_data = str_replace('data:image/jpeg;base64,', '', $webcam_data);
         $webcam_data = str_replace(' ', '+', $webcam_data);
@@ -100,50 +117,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($image_data !== false) {
             $photo_blob = $image_data;
-        } else {
-            $_SESSION['error_message'] = "Failed to process webcam photo.";
-            header("Location: user_registration.php");
-            exit;
         }
     }
 
-    // Set default password and hash it securely
-    $default_password = '123456';
-    $hashed_password = password_hash($default_password, PASSWORD_BCRYPT);
+    // Create full name
+    $full_name = trim($staff['first_name'] . ' ' . $staff['last_name'] . (!empty($staff['other_name']) ? ' ' . $staff['other_name'] : ''));
 
-    // Insert user with prepared statement to handle BLOB
-    if ($photo_blob) {
-        $sql = "INSERT INTO tblusers (username, first_name, last_name, email, password, sex, mobile, photo, userrole, status, date_created, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)";
+    // Insert user with prepared statement - including all fields
+    $sql = "INSERT INTO tblusers (
+        username,
+        first_name,
+        last_name,
+        full_name,
+        email,
+        password,
+        sex,
+        mobile,
+        id_number,
+        photo,
+        userrole,
+        status,
+        date_created,
+        created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)";
 
-        $stmt = $conn->prepare($sql);
-        $created_by = $_SESSION['full_name'] ?? 'Admin';
+    $stmt = $conn->prepare($sql);
+    $created_by = $_SESSION['full_name'] ?? 'Admin';
 
-        // For BLOB data, we need to use 'b' type and send null for now
-        $stmt->bind_param("ssssssssss",
-            $username, $first_name, $last_name, $email, $hashed_password,
-            $sex, $mobile, $photo_blob, $userrole, $created_by
-        );
-
-        // Now send the BLOB data using send_long_data
-        if ($photo_blob) {
-            $stmt->send_long_data(7, $photo_blob); // Index 7 is the photo column
-        }
-    } else {
-        $sql = "INSERT INTO tblusers (username, first_name, last_name, email, password, sex, mobile, userrole, status, date_created, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)";
-
-        $stmt = $conn->prepare($sql);
-        $created_by = $_SESSION['full_name'] ?? 'Admin';
-
-        $stmt->bind_param("sssssssss",
-            $username, $first_name, $last_name, $email, $hashed_password,
-            $sex, $mobile, $userrole, $created_by
-        );
-    }
+    // Count the parameters: 13 placeholders (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)
+    // But we have 12 bound parameters because 'Active' and NOW() are not bound
+    // So we need 12 bind parameters
+    $stmt->bind_param("ssssssssssss",
+        $username,           // 1
+        $staff['first_name'], // 2
+        $staff['last_name'],  // 3
+        $full_name,          // 4
+        $staff['email'],      // 5
+        $hashed_password,     // 6
+        $staff['sex'],        // 7
+        $staff['staff_phone'], // 8
+        $staff['id_number'],  // 9
+        $photo_blob,          // 10
+        $userrole,            // 11
+        $created_by           // 12
+    );
 
     if ($stmt->execute()) {
-        $_SESSION['success_message'] = "User added successfully. Default password is 123456 - please change it after login.";
+        $_SESSION['success_message'] = "User account created successfully for {$staff['first_name']} {$staff['last_name']}. Default password is 123456.";
         header("Location: userslist.php");
         exit;
     } else {
@@ -153,13 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     $stmt->close();
-}
-
-// Get genders
-$gender_result = $conn->query("SELECT gender_name FROM tblgender ORDER BY gender_name");
-$genders = [];
-while ($row = $gender_result->fetch_assoc()) {
-    $genders[] = $row['gender_name'];
 }
 
 // Get user roles
@@ -179,7 +192,7 @@ while ($row = $roles_result->fetch_assoc()) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f4f7fc;
             min-height: 100vh;
             padding: 20px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -235,6 +248,12 @@ while ($row = $roles_result->fetch_assoc()) {
             border: 1px solid #f5c6cb;
         }
 
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -278,13 +297,76 @@ while ($row = $roles_result->fetch_assoc()) {
             box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
         }
 
-        .photo-preview {
+        .form-control[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        .staff-preview {
             grid-column: span 2;
-            text-align: center;
-            padding: 20px;
             background: #f8f9fa;
             border-radius: 10px;
-            border: 2px dashed #dee2e6;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .staff-preview h4 {
+            color: #0d1a63;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .preview-item {
+            font-size: 13px;
+        }
+
+        .preview-item strong {
+            color: #666;
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .preview-item span {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .photo-section {
+            grid-column: span 2;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .current-photo {
+            text-align: center;
+        }
+
+        .current-photo img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .photo-preview {
+            text-align: center;
         }
 
         #photo-preview-img {
@@ -293,32 +375,6 @@ while ($row = $roles_result->fetch_assoc()) {
             border-radius: 10px;
             display: none;
             margin: 0 auto 10px;
-        }
-
-        .webcam-container {
-            grid-column: span 2;
-            text-align: center;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 2px dashed #dee2e6;
-        }
-
-        #video, #canvas {
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            border-radius: 10px;
-            display: none;
-        }
-
-        #preview {
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            border-radius: 10px;
-            display: none;
-            border: 3px solid #667eea;
         }
 
         .btn-group {
@@ -358,10 +414,6 @@ while ($row = $roles_result->fetch_assoc()) {
             color: white;
         }
 
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
         .btn-info {
             background: #17a2b8;
             color: white;
@@ -370,6 +422,20 @@ while ($row = $roles_result->fetch_assoc()) {
         .btn-success {
             background: #28a745;
             color: white;
+        }
+
+        .id-search {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .id-search .form-control {
+            flex: 1;
+        }
+
+        .id-search .btn {
+            padding: 12px 25px;
         }
 
         .photo-hint {
@@ -385,6 +451,10 @@ while ($row = $roles_result->fetch_assoc()) {
 
             .form-group.full-width {
                 grid-column: span 1;
+            }
+
+            .preview-grid {
+                grid-template-columns: 1fr;
             }
 
             .btn-group {
@@ -420,48 +490,94 @@ while ($row = $roles_result->fetch_assoc()) {
                     </div>
                 <?php endif; ?>
 
+                <!-- ID Number Search Form -->
+                <form method="GET" action="" class="id-search">
+                    <input type="text" name="id_number" class="form-control"
+                           placeholder="Enter ID Number to fetch staff details"
+                           value="<?php echo htmlspecialchars($id_number); ?>" required>
+                    <button type="submit" name="fetch" class="btn btn-info">
+                        <i class="fas fa-search"></i> Fetch Details
+                    </button>
+                    <?php if ($staff_data): ?>
+                        <a href="user_registration.php" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    <?php endif; ?>
+                </form>
+
+                <?php if ($staff_data): ?>
+                    <!-- Staff Preview -->
+                    <div class="staff-preview">
+                        <h4><i class="fas fa-user-check"></i> Staff Details Found</h4>
+                        <div class="preview-grid">
+                            <div class="preview-item">
+                                <strong>Full Name</strong>
+                                <span><?php echo htmlspecialchars($staff_data['first_name'] . ' ' . $staff_data['last_name'] . (!empty($staff_data['other_name']) ? ' ' . $staff_data['other_name'] : '')); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>ID Number</strong>
+                                <span><?php echo htmlspecialchars($staff_data['id_number']); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Email</strong>
+                                <span><?php echo htmlspecialchars($staff_data['email'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Phone</strong>
+                                <span><?php echo htmlspecialchars($staff_data['staff_phone'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Sex</strong>
+                                <span><?php echo htmlspecialchars($staff_data['sex'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Facility</strong>
+                                <span><?php echo htmlspecialchars($staff_data['facility_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Department</strong>
+                                <span><?php echo htmlspecialchars($staff_data['department_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Cadre</strong>
+                                <span><?php echo htmlspecialchars($staff_data['cadre_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>County</strong>
+                                <span><?php echo htmlspecialchars($staff_data['county_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Subcounty</strong>
+                                <span><?php echo htmlspecialchars($staff_data['subcounty_name'] ?? 'N/A'); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <form method="post" action="user_registration.php" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                     <input type="hidden" name="webcam_photo" id="webcam_photo">
+                    <input type="hidden" name="id_number" value="<?php echo htmlspecialchars($staff_data['id_number'] ?? $id_number); ?>">
 
                     <div class="form-grid">
-                        <div class="form-group">
+                        <!-- ID Number (Read-only) -->
+                        <div class="form-group full-width">
+                            <label>ID Number <i>*</i></label>
+                            <input type="text" class="form-control"
+                                   value="<?php echo htmlspecialchars($staff_data['id_number'] ?? $id_number); ?>"
+                                   readonly>
+                            <small class="text-muted">ID Number cannot be edited as it's linked to staff records</small>
+                        </div>
+
+                        <!-- Username -->
+                        <div class="form-group full-width">
                             <label>Username <i>*</i></label>
-                            <input type="text" class="form-control" name="username" required>
+                            <input type="text" class="form-control" name="username"
+                                   value="<?php echo isset($staff_data) ? strtolower($staff_data['first_name'] . '.' . $staff_data['last_name']) : ''; ?>"
+                                   required>
                         </div>
 
-                        <div class="form-group">
-                            <label>First Name <i>*</i></label>
-                            <input type="text" class="form-control" name="first_name" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Last Name <i>*</i></label>
-                            <input type="text" class="form-control" name="last_name" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Email <i>*</i></label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Sex <i>*</i></label>
-                            <select class="form-control" name="sex" required>
-                                <option value="">Select Sex</option>
-                                <?php foreach ($genders as $gender): ?>
-                                    <option value="<?php echo htmlspecialchars($gender); ?>">
-                                        <?php echo htmlspecialchars($gender); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Mobile <i>*</i></label>
-                            <input type="text" class="form-control" name="mobile" required>
-                        </div>
-
+                        <!-- User Role -->
                         <div class="form-group full-width">
                             <label>User Role <i>*</i></label>
                             <select class="form-control" name="userrole" required>
@@ -474,35 +590,32 @@ while ($row = $roles_result->fetch_assoc()) {
                             </select>
                         </div>
 
-                        <!-- Photo Preview -->
-                        <div class="photo-preview">
-                            <img id="photo-preview-img" src="#" alt="Preview">
-                            <p>Photo Preview</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Upload Photo</label>
-                            <input type="file" class="form-control" id="photo" name="photo" accept="image/jpeg,image/png,image/gif">
-                            <div class="photo-hint">
-                                <i class="fas fa-info-circle"></i> Max size: 5MB. Allowed: JPG, PNG, GIF
+                        <!-- Photo Section -->
+                        <div class="photo-section">
+                            <div class="current-photo">
+                                <?php if ($staff_data && !empty($staff_data['photo'])): ?>
+                                    <img src="display_staff_photo.php?id_number=<?php echo urlencode($staff_data['id_number']); ?>"
+                                         alt="Staff Photo"
+                                         onerror="this.src='https://via.placeholder.com/120?text=No+Photo'">
+                                <?php else: ?>
+                                    <img src="https://via.placeholder.com/120?text=No+Photo" alt="No Photo">
+                                <?php endif; ?>
+                                <p>Staff Photo</p>
                             </div>
-                        </div>
 
-                        <div class="webcam-container">
-                            <label>Or Take a Photo</label>
-                            <video id="video" width="400" height="300" autoplay></video>
-                            <canvas id="canvas"></canvas>
-                            <img id="preview" src="#" alt="Preview">
-                            <div style="margin-top: 10px;">
-                                <button type="button" id="start-webcam" class="btn btn-info btn-sm">
-                                    <i class="fas fa-camera"></i> Start Webcam
-                                </button>
-                                <button type="button" id="capture-btn" class="btn btn-success btn-sm" style="display: none;">
-                                    <i class="fas fa-camera-retro"></i> Capture Photo
-                                </button>
-                                <button type="button" id="retake-btn" class="btn btn-warning btn-sm" style="display: none;">
-                                    <i class="fas fa-redo"></i> Retake
-                                </button>
+                            <div style="flex: 1;">
+                                <div class="photo-preview">
+                                    <img id="photo-preview-img" src="#" alt="New Photo Preview">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Upload New Photo (Optional)</label>
+                                    <input type="file" class="form-control" id="photo" name="photo"
+                                           accept="image/jpeg,image/png,image/gif">
+                                    <div class="photo-hint">
+                                        <i class="fas fa-info-circle"></i> Max size: 5MB. Leave empty to use staff photo
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -512,10 +625,15 @@ while ($row = $roles_result->fetch_assoc()) {
                             <i class="fas fa-arrow-left"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Register User
+                            <i class="fas fa-save"></i> Create User Account
                         </button>
                     </div>
                 </form>
+
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note:</strong> Default password is <strong>123456</strong>. User will be prompted to change it on first login.
+                </div>
             </div>
         </div>
     </div>
@@ -528,79 +646,8 @@ while ($row = $roles_result->fetch_assoc()) {
             reader.onload = function(e) {
                 document.getElementById('photo-preview-img').src = e.target.result;
                 document.getElementById('photo-preview-img').style.display = 'block';
-                document.getElementById('preview').style.display = 'none';
-                document.getElementById('video').style.display = 'none';
             }
             reader.readAsDataURL(this.files[0]);
-        }
-    });
-
-    // Webcam capture functionality
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const preview = document.getElementById('preview');
-    const startWebcamBtn = document.getElementById('start-webcam');
-    const captureBtn = document.getElementById('capture-btn');
-    const retakeBtn = document.getElementById('retake-btn');
-    const webcamPhotoInput = document.getElementById('webcam_photo');
-    const photoInput = document.getElementById('photo');
-    const photoPreview = document.getElementById('photo-preview-img');
-
-    let stream = null;
-
-    startWebcamBtn.addEventListener('click', async () => {
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            video.style.display = 'block';
-            captureBtn.style.display = 'inline-block';
-            startWebcamBtn.style.display = 'none';
-            retakeBtn.style.display = 'none';
-            preview.style.display = 'none';
-            photoPreview.style.display = 'none';
-            photoInput.value = ''; // Clear file input
-        } catch (err) {
-            alert('Error accessing webcam: ' + err.message);
-        }
-    });
-
-    captureBtn.addEventListener('click', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        preview.src = dataUrl;
-        preview.style.display = 'block';
-        webcamPhotoInput.value = dataUrl;
-        video.style.display = 'none';
-        captureBtn.style.display = 'none';
-        retakeBtn.style.display = 'inline-block';
-        photoInput.value = ''; // Clear file input
-
-        // Stop webcam stream
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-    });
-
-    retakeBtn.addEventListener('click', () => {
-        startWebcamBtn.style.display = 'inline-block';
-        retakeBtn.style.display = 'none';
-        preview.style.display = 'none';
-        webcamPhotoInput.value = '';
-    });
-
-    // Clear webcam photo if file input is used
-    photoInput.addEventListener('change', () => {
-        if (photoInput.files.length > 0) {
-            webcamPhotoInput.value = '';
-            preview.style.display = 'none';
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                video.style.display = 'none';
-                captureBtn.style.display = 'none';
-                startWebcamBtn.style.display = 'inline-block';
-            }
         }
     });
     </script>
