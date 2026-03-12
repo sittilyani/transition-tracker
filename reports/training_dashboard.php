@@ -1,6 +1,62 @@
 <?php
 require_once '../includes/config.php';
 require_once '../includes/session_check.php';
+
+// Get counts for stats
+$total_self_trainings = 0;
+$total_session_trainings = 0;
+$total_staff_trained = 0;
+$total_facilities = 0;
+$total_courses = 0;
+
+// Get count from staff_self_trainings (only verified)
+$self_count = $conn->query("SELECT COUNT(*) as count FROM staff_self_trainings WHERE status = 'verified'");
+if ($self_count) {
+    $total_self_trainings = $self_count->fetch_assoc()['count'];
+}
+
+// Get count from staff_trainings (all are verified by default)
+$session_count = $conn->query("SELECT COUNT(*) as count FROM staff_trainings");
+if ($session_count) {
+    $total_session_trainings = $session_count->fetch_assoc()['count'];
+}
+
+// Get unique staff count (union of both tables)
+$staff_count = $conn->query("
+    SELECT COUNT(DISTINCT id_number) as count FROM (
+        SELECT id_number FROM staff_self_trainings WHERE status = 'verified'
+        UNION
+        SELECT id_number FROM staff_trainings
+    ) as combined_staff
+");
+if ($staff_count) {
+    $total_staff_trained = $staff_count->fetch_assoc()['count'];
+}
+
+// Get unique facilities count from county_staff (joined with trainings)
+$facility_count = $conn->query("
+    SELECT COUNT(DISTINCT cs.facility_name) as count FROM (
+        SELECT sst.staff_id FROM staff_self_trainings sst WHERE sst.status = 'verified'
+        UNION ALL
+        SELECT st.staff_id FROM staff_trainings st
+    ) as trainings
+    JOIN county_staff cs ON trainings.staff_id = cs.staff_id
+");
+if ($facility_count) {
+    $total_facilities = $facility_count->fetch_assoc()['count'];
+}
+
+// Get unique courses count
+$course_count = $conn->query("
+    SELECT COUNT(DISTINCT course_name) as count FROM (
+        SELECT course_name FROM staff_self_trainings WHERE status = 'verified'
+        UNION
+        SELECT course_name FROM staff_trainings
+    ) as combined_courses
+");
+if ($course_count) {
+    $total_courses = $course_count->fetch_assoc()['count'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,9 +70,6 @@ require_once '../includes/session_check.php';
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
     <style>
         * {
@@ -33,7 +86,7 @@ require_once '../includes/session_check.php';
         }
 
         .container {
-            max-width: 1400px;
+            width: 95%;
             margin: 0 auto;
             padding: 20px;
         }
@@ -57,6 +110,15 @@ require_once '../includes/session_check.php';
         .header p {
             font-size: 1.1rem;
             opacity: 0.95;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 14px;
         }
 
         .dashboard-container {
@@ -100,9 +162,6 @@ require_once '../includes/session_check.php';
             border-bottom: 2px solid #ecf0f1;
             font-size: 1.4rem;
             font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         .form-group {
@@ -167,7 +226,7 @@ require_once '../includes/session_check.php';
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -199,50 +258,47 @@ require_once '../includes/session_check.php';
             font-weight: 600;
         }
 
+        .stat-sub {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
         .chart-container {
             background: white;
             border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 30px;
+            padding: 20px;
             box-shadow: 0 3px 15px rgba(0,0,0,0.08);
         }
 
         .chart-title {
             color: #011f88;
-            margin-bottom: 20px;
-            font-size: 1.3rem;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-title .badge {
+            background: #3498db;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
         }
 
         .chart-wrapper {
             height: 300px;
             position: relative;
-        }
-
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
-            overflow: hidden;
-        }
-
-        .dataTables_wrapper {
-            margin-top: 20px;
-        }
-
-        .dataTables_length,
-        .dataTables_filter,
-        .dataTables_info,
-        .dataTables_paginate {
-            margin-bottom: 15px;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 50px;
-            color: #6c757d;
-            font-size: 1.1rem;
         }
 
         .loading {
@@ -256,36 +312,17 @@ require_once '../includes/session_check.php';
             display: block;
         }
 
-        .export-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .export-btn {
-            padding: 10px 20px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        .export-btn:hover {
-            background: #218838;
-        }
-
-        .export-btn.pdf {
-            background: #dc3545;
-        }
-
-        .export-btn.pdf:hover {
-            background: #c82333;
-        }
-
         /* Responsive Design */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 1024px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
@@ -309,30 +346,9 @@ require_once '../includes/session_check.php';
                 font-size: 1.8rem;
             }
 
-            .filter-section,
-            .results-section,
-            .chart-container,
-            .table-container {
-                padding: 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header h1 {
-                font-size: 1.6rem;
-            }
-
             .stats-grid {
                 grid-template-columns: 1fr;
-            }
-
-            .export-buttons {
-                flex-direction: column;
+                gap: 15px;
             }
         }
     </style>
@@ -340,27 +356,37 @@ require_once '../includes/session_check.php';
 <body>
     <div class="container">
         <div class="header">
-            <h1>Training Analysis Dashboard</h1>
-            <p>Analyze staff training data with interactive filters and visualizations</p>
+            <h1><i class="fas fa-chart-line"></i> Training Analysis Dashboard</h1>
+            <p>Comprehensive analytics of all training activities</p>
+            <span class="badge"><i class="fas fa-database"></i> Data Sources: Individual & Session-based Trainings</span>
         </div>
 
         <div class="dashboard-container">
             <!-- Filter Section -->
             <div class="filter-section">
-                <h2 class="filter-title">Filter Data</h2>
+                <h2 class="filter-title"><i class="fas fa-filter"></i> Filter Data</h2>
 
                 <form id="filterForm">
+                    <div class="form-group">
+                        <label>Data Source</label>
+                        <select class="form-select" id="data_source" name="data_source">
+                            <option value="all">All Sources</option>
+                            <option value="self">Individual Trainings Only</option>
+                            <option value="session">Session-based Trainings Only</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label>County</label>
                         <select class="form-select" id="county" name="county">
                             <option value="">All Counties</option>
                             <?php
-                            $countyQuery = "SELECT DISTINCT county FROM staff_trainings WHERE county IS NOT NULL AND county != '' ORDER BY county";
+                            $countyQuery = "SELECT DISTINCT county_name FROM county_staff WHERE county_name IS NOT NULL AND county_name != '' ORDER BY county_name";
                             $countyResult = $conn->query($countyQuery);
 
                             if($countyResult && $countyResult->num_rows > 0) {
                                 while ($county = $countyResult->fetch_assoc()) {
-                                    echo "<option value='" . htmlspecialchars($county['county']) . "'>" . htmlspecialchars($county['county']) . "</option>";
+                                    echo "<option value='" . htmlspecialchars($county['county_name']) . "'>" . htmlspecialchars($county['county_name']) . "</option>";
                                 }
                             }
                             ?>
@@ -371,7 +397,16 @@ require_once '../includes/session_check.php';
                         <label>Sub-County</label>
                         <select class="form-select" id="subcounty" name="subcounty">
                             <option value="">All Sub-Counties</option>
-                            <!-- Populated dynamically based on county selection -->
+                            <?php
+                            $subcountyQuery = "SELECT DISTINCT subcounty_name FROM county_staff WHERE subcounty_name IS NOT NULL AND subcounty_name != '' ORDER BY subcounty_name";
+                            $subcountyResult = $conn->query($subcountyQuery);
+
+                            if($subcountyResult && $subcountyResult->num_rows > 0) {
+                                while ($subcounty = $subcountyResult->fetch_assoc()) {
+                                    echo "<option value='" . htmlspecialchars($subcounty['subcounty_name']) . "'>" . htmlspecialchars($subcounty['subcounty_name']) . "</option>";
+                                }
+                            }
+                            ?>
                         </select>
                     </div>
 
@@ -380,12 +415,12 @@ require_once '../includes/session_check.php';
                         <select class="form-select" id="facility" name="facility">
                             <option value="">All Facilities</option>
                             <?php
-                            $facilityQuery = "SELECT DISTINCT facility_id, facility_name FROM staff_trainings WHERE facility_name IS NOT NULL AND facility_name != '' ORDER BY facility_name";
+                            $facilityQuery = "SELECT DISTINCT facility_name FROM county_staff WHERE facility_name IS NOT NULL AND facility_name != '' ORDER BY facility_name";
                             $facilityResult = $conn->query($facilityQuery);
 
                             if($facilityResult && $facilityResult->num_rows > 0) {
                                 while ($facility = $facilityResult->fetch_assoc()) {
-                                    echo "<option value='" . $facility['facility_id'] . "'>" . htmlspecialchars($facility['facility_name']) . "</option>";
+                                    echo "<option value='" . htmlspecialchars($facility['facility_name']) . "'>" . htmlspecialchars($facility['facility_name']) . "</option>";
                                 }
                             }
                             ?>
@@ -393,67 +428,20 @@ require_once '../includes/session_check.php';
                     </div>
 
                     <div class="form-group">
-                        <label>Course Type</label>
+                        <label>Course</label>
                         <select class="form-select" id="course" name="course">
                             <option value="">All Courses</option>
                             <?php
-                            $courseQuery = "SELECT DISTINCT course_id, course_name FROM staff_trainings WHERE course_name IS NOT NULL AND course_name != '' ORDER BY course_name";
+                            $courseQuery = "SELECT DISTINCT course_name FROM (
+                                SELECT course_name FROM staff_trainings WHERE course_name IS NOT NULL AND course_name != ''
+                                UNION
+                                SELECT course_name FROM staff_self_trainings WHERE status = 'verified'
+                            ) as courses ORDER BY course_name";
                             $courseResult = $conn->query($courseQuery);
 
                             if($courseResult && $courseResult->num_rows > 0) {
                                 while ($course = $courseResult->fetch_assoc()) {
-                                    echo "<option value='" . $course['course_id'] . "'>" . htmlspecialchars($course['course_name']) . "</option>";
-                                }
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Duration</label>
-                        <select class="form-select" id="duration" name="duration">
-                            <option value="">All Durations</option>
-                            <?php
-                            $durationQuery = "SELECT DISTINCT duration_id, duration_name FROM staff_trainings WHERE duration_name IS NOT NULL AND duration_name != '' ORDER BY duration_name";
-                            $durationResult = $conn->query($durationQuery);
-
-                            if($durationResult && $durationResult->num_rows > 0) {
-                                while ($duration = $durationResult->fetch_assoc()) {
-                                    echo "<option value='" . $duration['duration_id'] . "'>" . htmlspecialchars($duration['duration_name']) . "</option>";
-                                }
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Training Location</label>
-                        <select class="form-select" id="location" name="location">
-                            <option value="">All Locations</option>
-                            <?php
-                            $locationQuery = "SELECT DISTINCT location_id, location_name FROM staff_trainings WHERE location_name IS NOT NULL AND location_name != '' ORDER BY location_name";
-                            $locationResult = $conn->query($locationQuery);
-
-                            if($locationResult && $locationResult->num_rows > 0) {
-                                while ($location = $locationResult->fetch_assoc()) {
-                                    echo "<option value='" . $location['location_id'] . "'>" . htmlspecialchars($location['location_name']) . "</option>";
-                                }
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Cadre</label>
-                        <select class="form-select" id="cadre" name="cadre">
-                            <option value="">All Cadres</option>
-                            <?php
-                            $cadreQuery = "SELECT DISTINCT cadre_id, cadrename FROM staff_trainings WHERE cadrename IS NOT NULL AND cadrename != '' ORDER BY cadrename";
-                            $cadreResult = $conn->query($cadreQuery);
-
-                            if($cadreResult && $cadreResult->num_rows > 0) {
-                                while ($cadre = $cadreResult->fetch_assoc()) {
-                                    echo "<option value='" . $cadre['cadre_id'] . "'>" . htmlspecialchars($cadre['cadrename']) . "</option>";
+                                    echo "<option value='" . htmlspecialchars($course['course_name']) . "'>" . htmlspecialchars($course['course_name']) . "</option>";
                                 }
                             }
                             ?>
@@ -465,7 +453,11 @@ require_once '../includes/session_check.php';
                         <select class="form-select" id="year" name="year">
                             <option value="">All Years</option>
                             <?php
-                            $yearQuery = "SELECT DISTINCT YEAR(training_date) as year FROM staff_trainings WHERE training_date IS NOT NULL ORDER BY year DESC";
+                            $yearQuery = "SELECT DISTINCT YEAR(start_date) as year FROM (
+                                SELECT start_date FROM staff_trainings WHERE start_date IS NOT NULL
+                                UNION
+                                SELECT start_date FROM staff_self_trainings WHERE status = 'verified'
+                            ) as years ORDER BY year DESC";
                             $yearResult = $conn->query($yearQuery);
 
                             if($yearResult && $yearResult->num_rows > 0) {
@@ -498,76 +490,105 @@ require_once '../includes/session_check.php';
                         </select>
                     </div>
 
-                    <button type="submit" class="btn">Apply Filters</button>
-                    <button type="button" id="resetBtn" class="btn btn-reset">Reset Filters</button>
+                    <button type="submit" class="btn"><i class="fas fa-search"></i> Apply Filters</button>
+                    <button type="button" id="resetBtn" class="btn btn-reset"><i class="fas fa-undo"></i> Reset Filters</button>
                 </form>
             </div>
 
-            <!-- Results Section -->
+            <!-- Results Section (No Staff List) -->
             <div class="results-section">
                 <div class="results-title">
-                    <span>Training Analytics</span>
-                    <div class="export-buttons">
-                        <button class="export-btn" onclick="exportToExcel()">Export to Excel</button>
-                        <button class="export-btn pdf" onclick="exportToPDF()">Export to PDF</button>
-                    </div>
+                    <span><i class="fas fa-chart-bar"></i> Training Analytics</span>
                 </div>
 
                 <!-- Loading Indicator -->
                 <div class="loading" id="loading">
-                    <div style="font-size: 18px; margin-bottom: 10px;">? Loading data...</div>
-                    <div style="color: #6c757d;">Please wait while we fetch your data</div>
+                    <div class="spinner" style="font-size: 18px; margin-bottom: 10px;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+                    <div style="color: #6c757d;">Loading dashboard data...</div>
                 </div>
 
                 <!-- Statistics Cards -->
                 <div class="stats-grid" id="statsCards">
-                    <!-- Stats will be loaded here -->
-                </div>
-
-                <!-- Charts -->
-                <div class="chart-container">
-                    <h3 class="chart-title">Training Distribution by Course</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="courseChart"></canvas>
+                    <div class="stat-card">
+                        <div class="stat-value"><?php echo number_format($total_self_trainings + $total_session_trainings); ?></div>
+                        <div class="stat-label">Total Trainings</div>
+                        <div class="stat-sub">Self: <?php echo number_format($total_self_trainings); ?> | Session: <?php echo number_format($total_session_trainings); ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?php echo number_format($total_staff_trained); ?></div>
+                        <div class="stat-label">Staff Trained</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?php echo number_format($total_facilities); ?></div>
+                        <div class="stat-label">Facilities</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?php echo number_format($total_courses); ?></div>
+                        <div class="stat-label">Courses</div>
                     </div>
                 </div>
 
-                <div class="chart-container">
-                    <h3 class="chart-title">Monthly Training Trend</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="monthlyChart"></canvas>
+                <!-- Charts Row 1 -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i> Training by Course
+                            <span class="badge">Top 10</span>
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="courseChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i> Training by Cadre
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="cadreChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <div class="chart-container">
-                    <h3 class="chart-title">Training by Cadre</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="cadreChart"></canvas>
+                <!-- Charts Row 2 -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-line"></i> Monthly Training Trend
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i> Training by Department
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="departmentChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Data Table -->
-                <div class="table-container">
-                    <h3 class="chart-title">Training Records</h3>
-                    <div style="overflow-x: auto;">
-                        <table id="trainingTable" class="display" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Facility</th>
-                                    <th>Staff Name</th>
-                                    <th>Course</th>
-                                    <th>Duration</th>
-                                    <th>Date</th>
-                                    <th>Location</th>
-                                    <th>Cadre</th>
-                                    <th>Phone</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <!-- Data will be loaded here -->
-                            </tbody>
-                        </table>
+                <!-- Charts Row 3 -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i> Training by Facility Type
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="facilityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-bar"></i> Training by County
+                        </h3>
+                        <div class="chart-wrapper">
+                            <canvas id="countyChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -578,16 +599,6 @@ require_once '../includes/session_check.php';
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-    <!-- SheetJS for Excel export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- jsPDF for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
     <script>
     $(document).ready(function() {
         // Initialize Select2 for all dropdowns
@@ -597,22 +608,13 @@ require_once '../includes/session_check.php';
             width: '100%'
         });
 
-        // Initialize DataTable
-        let dataTable = $('#trainingTable').DataTable({
-            paging: true,
-            pageLength: 10,
-            lengthChange: true,
-            searching: true,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            responsive: true
-        });
-
         // Chart instances
         let courseChart = null;
         let monthlyChart = null;
         let cadreChart = null;
+        let departmentChart = null;
+        let facilityChart = null;
+        let countyChart = null;
 
         // Load initial data
         loadDashboardData();
@@ -630,54 +632,26 @@ require_once '../includes/session_check.php';
             loadDashboardData();
         });
 
-        // County change - load subcounties
-        $('#county').on('change', function() {
-            const county = $(this).val();
-            const subcountySelect = $('#subcounty');
-
-            subcountySelect.html('<option value="">All Sub-Counties</option>');
-
-            if (county) {
-                $.ajax({
-                    url: 'fetch_subcounties.php',
-                    method: 'POST',
-                    data: { county: county },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success && response.subcounties) {
-                            response.subcounties.forEach(function(subcounty) {
-                                subcountySelect.append('<option value="' + subcounty + '">' + subcounty + '</option>');
-                            });
-                        }
-                    },
-                    error: function() {
-                        console.error('Error loading subcounties');
-                    }
-                });
-            }
-        });
-
         // Main function to load dashboard data
         function loadDashboardData() {
             // Show loading
             $('#loading').addClass('active');
-            $('#statsCards').html('');
-            dataTable.clear().draw();
 
             // Destroy existing charts
             if (courseChart) courseChart.destroy();
             if (monthlyChart) monthlyChart.destroy();
             if (cadreChart) cadreChart.destroy();
+            if (departmentChart) departmentChart.destroy();
+            if (facilityChart) facilityChart.destroy();
+            if (countyChart) countyChart.destroy();
 
             // Get filter values
             const filters = {
+                data_source: $('#data_source').val(),
                 county: $('#county').val(),
                 subcounty: $('#subcounty').val(),
                 facility: $('#facility').val(),
                 course: $('#course').val(),
-                duration: $('#duration').val(),
-                location: $('#location').val(),
-                cadre: $('#cadre').val(),
                 year: $('#year').val(),
                 month: $('#month').val()
             };
@@ -696,9 +670,6 @@ require_once '../includes/session_check.php';
                         // Update charts
                         createCharts(response.chartData);
 
-                        // Update data table
-                        updateDataTable(response.trainings);
-
                         // Hide loading
                         $('#loading').removeClass('active');
                     } else {
@@ -708,6 +679,7 @@ require_once '../includes/session_check.php';
                 },
                 error: function(xhr, status, error) {
                     console.error('Error:', error);
+                    console.error('Response:', xhr.responseText);
                     alert('Error loading dashboard data. Please try again.');
                     $('#loading').removeClass('active');
                 }
@@ -715,10 +687,11 @@ require_once '../includes/session_check.php';
         }
 
         function updateStatsCards(stats) {
-            const statsHtml = `
+            $('#statsCards').html(`
                 <div class="stat-card">
                     <div class="stat-value">${stats.totalTrainings}</div>
                     <div class="stat-label">Total Trainings</div>
+                    <div class="stat-sub">Self: ${stats.selfTrainings} | Session: ${stats.sessionTrainings}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">${stats.totalStaff}</div>
@@ -732,9 +705,7 @@ require_once '../includes/session_check.php';
                     <div class="stat-value">${stats.totalCourses}</div>
                     <div class="stat-label">Courses</div>
                 </div>
-            `;
-
-            $('#statsCards').html(statsHtml);
+            `);
         }
 
         function createCharts(chartData) {
@@ -762,6 +733,11 @@ require_once '../includes/session_check.php';
                                 stepSize: 1
                             }
                         }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
                     }
                 }
             });
@@ -773,12 +749,19 @@ require_once '../includes/session_check.php';
                 data: {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                     datasets: [{
-                        label: 'Trainings per Month',
-                        data: chartData.monthlyData,
-                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                        borderColor: 'rgba(46, 204, 113, 1)',
+                        label: 'Self Trainings',
+                        data: chartData.monthlyData.self,
+                        backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                        borderColor: '#17a2b8',
                         borderWidth: 2,
-                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Session Trainings',
+                        data: chartData.monthlyData.session,
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        borderColor: '#28a745',
+                        borderWidth: 2,
                         tension: 0.4
                     }]
                 },
@@ -803,7 +786,8 @@ require_once '../includes/session_check.php';
                         data: chartData.cadres.map(c => c.count),
                         backgroundColor: [
                             '#3498db', '#2ecc71', '#e74c3c', '#f39c12',
-                            '#9b59b6', '#1abc9c', '#d35400', '#34495e'
+                            '#9b59b6', '#1abc9c', '#d35400', '#34495e',
+                            '#e67e22', '#27ae60', '#2980b9', '#8e44ad'
                         ]
                     }]
                 },
@@ -812,108 +796,109 @@ require_once '../includes/session_check.php';
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'right'
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Department Distribution Chart
+            const deptCtx = document.getElementById('departmentChart').getContext('2d');
+            departmentChart = new Chart(deptCtx, {
+                type: 'pie',
+                data: {
+                    labels: chartData.departments.map(d => d.department_name),
+                    datasets: [{
+                        data: chartData.departments.map(d => d.count),
+                        backgroundColor: [
+                            '#e74c3c', '#f39c12', '#1abc9c', '#9b59b6',
+                            '#34495e', '#e67e22', '#27ae60', '#2980b9'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Facility Type Chart
+            const facilityCtx = document.getElementById('facilityChart').getContext('2d');
+            facilityChart = new Chart(facilityCtx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.facilities.map(f => f.facility_name),
+                    datasets: [{
+                        label: 'Trainings by Facility',
+                        data: chartData.facilities.map(f => f.count),
+                        backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // County Chart
+            const countyCtx = document.getElementById('countyChart').getContext('2d');
+            countyChart = new Chart(countyCtx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.counties.map(c => c.county_name),
+                    datasets: [{
+                        label: 'Trainings by County',
+                        data: chartData.counties.map(c => c.count),
+                        backgroundColor: 'rgba(155, 89, 182, 0.7)',
+                        borderColor: 'rgba(155, 89, 182, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
                         }
                     }
                 }
             });
         }
-
-        function updateDataTable(trainings) {
-            dataTable.clear();
-
-            trainings.forEach(function(training, index) {
-                dataTable.row.add([
-                    index + 1,
-                    training.facility_name,
-                    training.staff_name,
-                    training.course_name,
-                    training.duration_name,
-                    new Date(training.training_date).toLocaleDateString(),
-                    training.location_name,
-                    training.cadrename || training.staff_cadre,
-                    training.staff_phone
-                ]);
-            });
-
-            dataTable.draw();
-        }
-
-        // Export functions
-        window.exportToExcel = function() {
-            const data = [];
-            const headers = ['#', 'Facility', 'Staff Name', 'Course', 'Duration', 'Date', 'Location', 'Cadre', 'Phone'];
-            data.push(headers);
-
-            $('#trainingTable tbody tr').each(function(index) {
-                const row = [];
-                row.push(index + 1);
-                $(this).find('td').each(function(i) {
-                    if (i !== 0) { // Skip the first column since we're adding index manually
-                        row.push($(this).text());
-                    }
-                });
-                data.push(row);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Trainings');
-            XLSX.writeFile(wb, 'training_data.xlsx');
-        };
-
-        window.exportToPDF = function() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Title
-            doc.setFontSize(18);
-            doc.text('Training Report', 14, 22);
-
-            // Filters info
-            doc.setFontSize(11);
-            let yPos = 35;
-            const filters = {
-                'County': $('#county').val() || 'All',
-                'Sub-County': $('#subcounty').val() || 'All',
-                'Facility': $('#facility option:selected').text() || 'All',
-                'Course': $('#course option:selected').text() || 'All',
-                'Year': $('#year').val() || 'All'
-            };
-
-            Object.entries(filters).forEach(([key, value]) => {
-                doc.text(`${key}: ${value}`, 14, yPos);
-                yPos += 7;
-            });
-
-            yPos += 10;
-
-            // Table headers
-            const headers = [['#', 'Facility', 'Staff Name', 'Course', 'Date', 'Cadre']];
-            const rows = [];
-
-            $('#trainingTable tbody tr').each(function(index) {
-                const cols = $(this).find('td');
-                rows.push([
-                    index + 1,
-                    $(cols[1]).text(),
-                    $(cols[2]).text(),
-                    $(cols[3]).text(),
-                    $(cols[5]).text(),
-                    $(cols[7]).text()
-                ]);
-            });
-
-            doc.autoTable({
-                head: headers,
-                body: rows,
-                startY: yPos,
-                theme: 'grid',
-                headStyles: { fillColor: [1, 31, 136] }
-            });
-
-            doc.save('training_report.pdf');
-        };
     });
     </script>
 </body>

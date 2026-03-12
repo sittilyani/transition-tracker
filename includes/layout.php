@@ -216,7 +216,7 @@ if (!$isAllowed) {
             <div class="nav-menu">
                 <!-- Main Navigation -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
+                    <div class="nav-section-title">Admin</div>
                     <?php if ($canAccessDashboard): ?>
                     <div class="nav-item">
                         <a href="../reports/training_dashboard.php" target="contentFrame" class="nav-link" style="background: #FFFF00; color: #000000;" onclick="handleNavClick()">
@@ -225,18 +225,19 @@ if (!$isAllowed) {
                     </div>
                     <?php endif; ?>
                     <div class="nav-item">
-                        <a href="../trainings/training_list.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
-                            <i class="fas fa-chalkboard-teacher"></i> Trainings
+                        <a href="../trainings/view_staff_trainings.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
+                            <i class="fas fa-chalkboard-teacher"></i> View Completed Trainings
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../meetings/view_meetings.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <i class="fa fa-users"></i> Meetings
+                        <a href="../trainings/training_list.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
+                            <i class="fas fa-chalkboard-teacher"></i> Course Trainings Lists
                         </a>
                     </div>
+
                     <div class="nav-item">
                         <a href="../backup/view_backups.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <i class="fa fa-database"></i> Backup
+                            <i class="fa fa-database"></i> View Backup
                         </a>
                     </div>
                 </div>
@@ -267,23 +268,30 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
+                        <a href="../trainings/training_registration.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Participants Registration
+                        </a>
+                    </div>
+                    <div class="nav-item">
                         <a href="../trainings/training_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             New trainings
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../trainings/index.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../trainings/training_needs_assessment_questionaire.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Draft trainings
+                            Training Needs Assessment
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../trainings/staff_training_form.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../trainings/staff_training_form.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Self trainings update
                         </a>
                     </div>
+
                 </div>
 
                 <!-- Reports Section -->
@@ -314,7 +322,7 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../reports/assets.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../assets-items/assets_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/box.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Assets
                         </a>
@@ -375,7 +383,7 @@ if (!$isAllowed) {
 
                     <!-- User Dropdown Menu -->
                     <div class="dropdown-menu-custom" id="userMenu">
-                        <a href="../public/profile.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
+                        <a href="../staff/employee_profile.php" target="contentFrame" class="dropdown-item" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/user.svg" alt="" width="16" height="16">
                             Profile
                         </a>

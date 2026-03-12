@@ -79,7 +79,9 @@ if($search){
                         OR facility_name LIKE '%$search%'
                         OR department_name LIKE '%$search%'
                         OR cadre_name LIKE '%$search%'
-                        OR id_number LIKE '%$search%')";
+                        OR id_number LIKE '%$search%'
+                        OR status LIKE '%$search%'
+                        OR employment_status LIKE '%$search%')";
 }
 
 if($status_filter) {

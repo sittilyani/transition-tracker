@@ -1,7 +1,7 @@
 <?php
 session_start();
 include('../includes/config.php');
-include('../includes/session_check.php'); 
+include('../includes/session_check.php');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -574,7 +574,12 @@ $full_name = trim($staff['first_name'] . ' ' . $staff['last_name'] . (!empty($st
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="academics-tab" data-toggle="tab" href="#academics" role="tab">
+                    <a class="nav-link" id="statutory-tab" data-toggle="tab" href="#disciplinary" role="tab">
+                        <i class="fas fa-file-bug"></i> Disciplinary
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="academics-tab" data-toggle="tab" href="#academic" role="tab">
                         <i class="fas fa-graduation-cap"></i> Academics
                     </a>
                 </li>
@@ -589,23 +594,38 @@ $full_name = trim($staff['first_name'] . ' ' . $staff['last_name'] . (!empty($st
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="trainings-tab" data-toggle="tab" href="#trainings" role="tab">
+                    <a class="nav-link" id="trainings-tab" data-toggle="tab" href="#training" role="tab">
                         <i class="fas fa-chalkboard-teacher"></i> Trainings
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="languages-tab" data-toggle="tab" href="#languages" role="tab">
+                    <a class="nav-link" id="languages-tab" data-toggle="tab" href="#language" role="tab">
                         <i class="fas fa-language"></i> Languages
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="referees-tab" data-toggle="tab" href="#referees" role="tab">
-                        <i class="fas fa-address-book"></i> Referees
+                    <a class="nav-link" id="referees-tab" data-toggle="tab" href="#referee" role="tab">
+                        <i class="fas fa-edit"></i> Referees
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" id="kin-tab" data-toggle="tab" href="#kin" role="tab">
-                        <i class="fas fa-users"></i> Next of Kin
+                        <i class="fas fa-dungeon"></i> Next of Kin
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="kin-tab" data-toggle="tab" href="#appraisal" role="tab">
+                        <i class="fas fa-address-card"></i> Appraisal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="kin-tab" data-toggle="tab" href="#leave" role="tab">
+                        <i class="fas fa-trailer"></i> Leave
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="kin-tab" data-toggle="tab" href="#registration" role="tab">
+                        <i class="fas fa-file"></i> Registration
                     </a>
                 </li>
             </ul>

@@ -4,7 +4,7 @@ include '../includes/config.php';
 
 // Check if file parameter is provided
 if (!isset($_GET['file']) || empty($_GET['file'])) {
-    header("Location: view_backups-manual.php?error=" . urlencode("No file specified for deletion."));
+    header("Location: view_backups.php?error=" . urlencode("No file specified for deletion."));
     exit();
 }
 
@@ -14,7 +14,7 @@ $fileToDelete = $_GET['file'];
 $backupsDir = realpath(dirname(__DIR__) . '/backup/database');
 
 if (!$backupsDir || !is_dir($backupsDir)) {
-    header("Location: view_backups-manual.php?error=" . urlencode("Backups directory not found."));
+    header("Location: view_backups.php?error=" . urlencode("Backups directory not found."));
     exit();
 }
 
@@ -23,19 +23,19 @@ $filePath = realpath($backupsDir . '/' . basename($fileToDelete));
 
 // Security checks
 if (!$filePath || strpos($filePath, $backupsDir) !== 0) {
-    header("Location: view_backups-manual.php?error=" . urlencode("Invalid file path."));
+    header("Location: view_backups.php?error=" . urlencode("Invalid file path."));
     exit();
 }
 
 // Check if file exists
 if (!file_exists($filePath)) {
-    header("Location: view_backups-manual.php?error=" . urlencode("File does not exist."));
+    header("Location: view_backups.php?error=" . urlencode("File does not exist."));
     exit();
 }
 
 // Check if it's actually a SQL file
 if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'sql') {
-    header("Location: view_backups-manual.php?error=" . urlencode("Invalid file type. Only SQL backups can be deleted."));
+    header("Location: view_backups.php?error=" . urlencode("Invalid file type. Only SQL backups can be deleted."));
     exit();
 }
 
@@ -94,9 +94,9 @@ if (!isset($_GET['confirm']) || $_GET['confirm'] !== 'yes') {
 
 // User confirmed deletion - proceed to delete the file
 if (unlink($filePath)) {
-    header("Location: view_backups-manual.php?message=" . urlencode("Backup deleted successfully: " . basename($fileToDelete)));
+    header("Location: view_backups.php?message=" . urlencode("Backup deleted successfully: " . basename($fileToDelete)));
 } else {
-    header("Location: view_backups-manual.php?error=" . urlencode("Failed to delete backup file."));
+    header("Location: view_backups.php?error=" . urlencode("Failed to delete backup file."));
 }
 exit();
 ?>

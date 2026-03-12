@@ -104,201 +104,145 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../assets/css/bootstrap.css" type="text/css">
-    <title>TM-monitoring - Login</title>
+    <title>Login - HPTU LMIS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Base Page Setup */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
+            background-color: #3F10CB;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-bottom: 60px; /* Space to prevent footer from covering form content */
         }
 
+        /* Login Container Styling */
         .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-            backdrop-filter: blur(10px);
-        }
-
-        .logo-container {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .logo-container img {
-            width: 120px;
-            height: auto;
-            border-radius: 10px;
-        }
-
-        .logo-container h2 {
-            color: #0D1A63;
-            font-size: 24px;
-            margin-top: 15px;
-            font-weight: 600;
-        }
-
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            border: 1px solid #f5c6cb;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            color: #0D1A63;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
             background: white;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 15px;
-            background: #0D1A63;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .btn-submit:hover {
-            background: #1a2a7a;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(13, 26, 99, 0.3);
-        }
-
-        .footer-links {
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 480px;
+            max-width: 60%;
+            margin: auto; /* Centers the form vertically and horizontally */
             text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 13px;
         }
 
-        .footer-links a {
-            color: #0D1A63;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-
-        .info-box {
-            background: #e7f3ff;
-            border: 1px solid #b8daff;
-            color: #004085;
-            padding: 12px;
-            border-radius: 8px;
+        .login-container img {
+            width: 120px;
             margin-bottom: 20px;
-            font-size: 13px;
-            text-align: center;
         }
 
-        .info-box i {
-            margin-right: 5px;
+        /* STICKY FOOTER STYLING */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 8%;
+            width: 100%; /* Spans 100% device width */
+            background-color: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            padding: 33px 20px;
+            z-index: 9999;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
 
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 30px 20px;
-            }
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* Helps on very small screens */
+            gap: 10px;
+        }
 
-            input, .btn-submit {
-                padding: 12px;
-            }
+        .footer-text {
+            font-size: 18px;
+            color: #666;
+            flex: 1;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .social-links a {
+            color: #4361ee;
+            font-size: 20px;
+            transition: transform 0.2s ease;
+        }
+
+        .social-links a:hover {
+            transform: scale(1.2);
+            color: #011f88;
+        }
+
+        /* Form Inputs */
+        .form-group { margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-top: 5px; }
+        .btn-submit {
+            width: 100%; padding: 12px; background: #4361ee; color: white; border: none;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            .footer-content { justify-content: center; text-align: center; }
+            .footer-text { margin-bottom: 5px; }
         }
     </style>
 </head>
 <body>
+
     <div class="login-container">
-        <div class="logo-container">
-            <img src="../assets/images/Logo-globe.png" width="156" height="152" alt="Logo">
-            <h2>Training Management System</h2>
-        </div>
 
-        <?php if ($error_message): ?>
-            <div class="error-message">
-                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
-            </div>
+        <img src="../assets/images/TaitaLogo.png" width="102" height="102" alt="">
+        <h2>Welcome Back</h2>
+        <p style="color: #666; margin-bottom: 25px;">Please login to your account</p>
+
+        <?php if (!empty($error_message)): ?>
+            <div style="color: red; margin-bottom: 15px; font-size: 14px;"><?php echo $error_message; ?></div>
         <?php endif; ?>
 
-        <?php if (isset($_SESSION['success_message'])): ?>
-            <div class="info-box">
-                <i class="fas fa-check-circle"></i> <?php echo $_SESSION['success_message']; unset($_SESSION['success_message']); ?>
-            </div>
-        <?php endif; ?>
-
-        <form action="login.php" method="post">
+        <form action="" method="POST">
             <div class="form-group">
-                <label for="username">
-                    <i class="fas fa-user"></i> Username
-                </label>
-                <input type="text" id="username" name="username"
-                       placeholder="Enter your username" required
-                       value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>">
+                <label>Username</label>
+                <input type="text" name="username" required>
             </div>
-
             <div class="form-group">
-                <label for="password">
-                    <i class="fas fa-lock"></i> Password
-                </label>
-                <input type="password" id="password" name="password"
-                       placeholder="Enter your password" required>
+                <label>Password</label>
+                <input type="password" name="password" required>
             </div>
-
             <button type="submit" class="btn-submit">
                 <i class="fas fa-sign-in-alt"></i> Login
             </button>
+            
+            <div class="register" style="margin-top: 20px;">
+                <p>Not registered Yet? Please contact the administrator</p>
+            </div>
         </form>
-
-        <div class="footer-links">
-            <p>Default password for new users: <strong>123456</strong></p>
-            <p>Forgot your password? Contact system administrator</p>
-        </div>
     </div>
 
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-text">
+                Trainings and mentorship monitoring - developed by LVCTHealth - Stawisha Pwani Project
+                <?php echo date('Y');?> - &copy; LVCT@20
+            </div>
+
+            <div class="social-links">
+                <a href="https://web.facebook.com/LVCTHealth/" target="_blank"><i class="fab fa-facebook"></i></a>
+                <a href="https://www.youtube.com/user/TheLVCT" target="_blank"><i class="fab fa-youtube"></i></a>
+                <a href="https://x.com/LVCTKe" target="_blank"><i class="fab fa-x-twitter"></i></a>
+                <a href="https://www.instagram.com/lvct_health/" target="_blank"><i class="fab fa-instagram"></i></a>
+                <a href="https://www.linkedin.com/company/lvcthealth/" target="_blank"><i class="fab fa-linkedin"></i></a>
+            </div>
+        </div>
+    </footer>
+
 </body>
 </html>

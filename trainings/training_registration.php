@@ -51,7 +51,7 @@ $counties = mysqli_query($conn, "SELECT * FROM counties ORDER BY county_name");
 if (isset($_POST['action'])) {
     $action = $_POST['action']; // 'draft', 'continue', 'submit'
 
-    // Get form data - REMOVED facility_id completely
+    // Get form data
     $course_id = !empty($_POST['course_id']) ? (int)$_POST['course_id'] : 0;
     $duration_id = !empty($_POST['duration_id']) ? (int)$_POST['duration_id'] : 0;
     $trainingtype_id = !empty($_POST['trainingtype_id']) ? (int)$_POST['trainingtype_id'] : 0;
@@ -80,7 +80,7 @@ if (isset($_POST['action'])) {
         try {
             // Check if editing existing session
             if ($session_id > 0) {
-                // Update existing session - REMOVED facility_id
+                // Update existing session
                 $session_sql = "UPDATE training_sessions SET
                     course_id = $course_id,
                     duration_id = $duration_id,
@@ -111,7 +111,7 @@ if (isset($_POST['action'])) {
                 }
 
             } else {
-                // Insert new session - REMOVED facility_id
+                // Insert new session
                 $status = ($action == 'submit') ? 'submitted' : 'draft';
 
                 $session_sql = "INSERT INTO training_sessions (
@@ -152,7 +152,7 @@ if (isset($_POST['action'])) {
             if ($action == 'submit') {
                 // Get session details with all necessary joins
                 $session_details_query = mysqli_query($conn, "
-                    SELECT ts.*, 
+                    SELECT ts.*,
                            c.course_name,
                            tt.trainingtype_name,
                            cd.duration_name,
@@ -166,7 +166,7 @@ if (isset($_POST['action'])) {
                     LEFT JOIN facilitator_levels fl ON ts.fac_level_id = fl.fac_level_id
                     WHERE ts.session_id = $session_id
                 ");
-                
+
                 if ($session_details = mysqli_fetch_assoc($session_details_query)) {
                     // Get county name
                     $county_name = '';
@@ -176,7 +176,7 @@ if (isset($_POST['action'])) {
                             $county_name = $county_row['county_name'];
                         }
                     }
-                    
+
                     // Get subcounty name
                     $subcounty_name = '';
                     if (!empty($session_details['subcounty_id'])) {
@@ -185,9 +185,6 @@ if (isset($_POST['action'])) {
                             $subcounty_name = $subcounty_row['sub_county_name'];
                         }
                     }
-
-                    // Get facilitator level name
-                    $facilitator_level = $session_details['facilitator_level_name'] ?? '';
 
                     // Get all participants for this session with their staff details
                     $participants_query = mysqli_query($conn, "
@@ -198,26 +195,68 @@ if (isset($_POST['action'])) {
                     ");
 
                     while ($participant = mysqli_fetch_assoc($participants_query)) {
-                        $full_name = trim($participant['first_name'] . ' ' . $participant['last_name'] . (!empty($participant['other_name']) ? ' ' . $participant['other_name'] : ''));
-                        
-                        // Insert into staff_trainings
+                        // Prepare facilitator details as JSON
+                        $facilitator_details = json_encode([
+                            [
+                                'name' => $session_details['facilitator_name'] ?? 'Training Facilitator',
+                                'level' => $session_details['facilitator_level_name'] ?? '',
+                                'fac_level_id' => $session_details['fac_level_id'] ?? null
+                            ]
+                        ]);
+
+                        // Insert into staff_trainings with the correct structure matching staff_self_trainings
                         $insert_staff_training = "INSERT INTO staff_trainings (
-                            facility_id, facility_name, mflcode, county, subcounty,
-                            staff_name, sex_name, staff_department, staff_designation, staff_p_no,
-                            staff_phone, email, staff_cadre, course_id, course_name,
-                            trainingtype_name, duration_id, duration_name, training_date,
-                            location_id, location_name, facilitator_name, cadre_id, cadrename,
-                            fac_level_id, facilitator_level, remarks, created_at
+                            staff_id,
+                            id_number,
+                            course_id,
+                            course_name,
+                            training_type_id,
+                            training_type,
+                            provider_id,
+                            start_date,
+                            end_date,
+                            training_provider,
+                            location_id,
+                            venue,
+                            certificate_number,
+                            facilitator_details,
+                            skills_acquired,
+                            funding_source,
+                            status,
+                            submission_date,
+                            verified_by,
+                            verification_date,
+                            created_by,
+                            created_at
                         ) VALUES (
-                            '{$participant['facility_id']}', '{$participant['facility_name']}', '{$participant['mfl_code']}', '$county_name', '$subcounty_name',
-                            '$full_name', '{$participant['sex']}', '{$participant['department_name']}', '{$participant['designation']}', '{$participant['staff_number']}',
-                            '{$participant['staff_phone']}', '{$participant['email']}', '{$participant['cadre_name']}', '{$session_details['course_id']}', '{$session_details['course_name']}',
-                            '{$session_details['trainingtype_name']}', '{$session_details['duration_id']}', '{$session_details['duration_name']}', '{$session_details['start_date']}',
-                            '{$session_details['location_id']}', '{$session_details['location_name']}', '{$session_details['facilitator_name']}', '{$participant['cadre_id']}', '{$participant['cadre_name']}',
-                            '{$session_details['fac_level_id']}', '$facilitator_level', '{$participant['remarks']}', NOW()
+                            {$participant['staff_id']},
+                            '{$participant['id_number']}',
+                            {$session_details['course_id']},
+                            '" . mysqli_real_escape_string($conn, $session_details['course_name']) . "',
+                            {$session_details['trainingtype_id']},
+                            '" . mysqli_real_escape_string($conn, $session_details['trainingtype_name']) . "',
+                            {$session_details['fac_level_id']},
+                            '{$session_details['start_date']}',
+                            '{$session_details['end_date']}',
+                            '" . mysqli_real_escape_string($conn, $session_details['facilitator_level_name']) . "',
+                            {$session_details['location_id']},
+                            '" . mysqli_real_escape_string($conn, $session_details['location_name']) . "',
+                            '" . mysqli_real_escape_string($conn, $session_details['session_code']) . "',
+                            '" . mysqli_real_escape_string($conn, $facilitator_details) . "',
+                            '" . mysqli_real_escape_string($conn, $session_details['training_objectives']) . "',
+                            'County Government',
+                            'verified',
+                            NOW(),
+                            '{$_SESSION['full_name']}',
+                            NOW(),
+                            '{$_SESSION['full_name']}',
+                            NOW()
                         )";
-                        
-                        mysqli_query($conn, $insert_staff_training);
+
+                        if (!mysqli_query($conn, $insert_staff_training)) {
+                            // Log error but don't stop execution
+                            error_log("Error inserting into staff_trainings: " . mysqli_error($conn));
+                        }
                     }
                 }
             }
@@ -612,7 +651,7 @@ $staff_list = mysqli_query($conn, "SELECT staff_id, first_name, last_name, other
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-chalkboard-teacher"></i> Training Registration Form</h1>
+            <h1><i class="fas fa-chalkboard-teacher"></i> Training Participants Registration Form</h1>
             <div class="header-actions">
                 <a href="training_drafts.php" class="btn btn-primary">
                     <i class="fas fa-save"></i> My Drafts
@@ -770,7 +809,7 @@ $staff_list = mysqli_query($conn, "SELECT staff_id, first_name, last_name, other
                             <?php
                             if ($selected_county) {
                                 $selected_subcounty = $session_data['subcounty_id'] ?? ($draft_data['subcounty_id'] ?? '');
-                                $subs = mysqli_query($conn, "SELECT sub_county_id, sub_county_name FROM sub_counties WHERE county_name = (SELECT county_name FROM counties WHERE county_id = $selected_county)");
+                                $subs = mysqli_query($conn, "SELECT sub_county_id, sub_county_name FROM sub_counties WHERE county_id = $selected_county");
                                 while ($row = mysqli_fetch_assoc($subs)) {
                                     $selected = ($selected_subcounty == $row['sub_county_id']) ? 'selected' : '';
                                     echo '<option value="'.$row['sub_county_id'].'" '.$selected.'>'.htmlspecialchars($row['sub_county_name']).'</option>';
@@ -851,13 +890,14 @@ $staff_list = mysqli_query($conn, "SELECT staff_id, first_name, last_name, other
                         <tbody>
                             <?php
                             $selected_staff_ids = $selected_staff;
+                            mysqli_data_seek($staff_list, 0);
                             while ($staff = mysqli_fetch_assoc($staff_list)):
                                 $checked = in_array($staff['staff_id'], $selected_staff_ids) ? 'checked' : '';
                                 $full_name = trim($staff['first_name'] . ' ' . $staff['last_name'] . (!empty($staff['other_name']) ? ' ' . $staff['other_name'] : ''));
                             ?>
                             <tr data-facility="<?php echo htmlspecialchars($staff['facility_name']); ?>"
                                 data-cadre="<?php echo htmlspecialchars($staff['cadre_name']); ?>"
-                                data-search="<?php echo strtolower($full_name . ' ' . $staff['facility_name'] . ' ' . $staff['department_name'] . ' ' . $staff['cadre_name']); ?>">
+                                data-search="<?php echo strtolower($full_name . ' ' . $staff['facility_name'] . ' ' . $staff['department_name'] . ' ' . $staff['id_number'] . ' ' . $staff['cadre_name']); ?>">
                                 <td>
                                     <input type="checkbox" name="selected_staff[]"
                                            value="<?php echo $staff['staff_id']; ?>"

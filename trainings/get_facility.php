@@ -9,7 +9,7 @@ if (!$facility) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT level_of_care, mflcode, countyname, subcountyname FROM facilities WHERE facilityname = ?");
+$stmt = $conn->prepare("SELECT * FROM facilities WHERE facility_name = ?");
 $stmt->bind_param("s", $facility);
 $stmt->execute();
 $result = $stmt->get_result();

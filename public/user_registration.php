@@ -72,8 +72,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     $check_stmt->close();
 
-    // Get staff details from county_staff table
-    $staff_stmt = $conn->prepare("SELECT * FROM county_staff WHERE id_number = ? AND status = 'active'");
+    // Check if ID number already has a user account
+    $check_id_sql = "SELECT user_id FROM tblusers WHERE id_number = ?";
+    $check_id_stmt = $conn->prepare($check_id_sql);
+    $check_id_stmt->bind_param('s', $id_number);
+    $check_id_stmt->execute();
+    $check_id_result = $check_id_stmt->get_result();
+
+    if ($check_id_result->num_rows > 0) {
+        $_SESSION['error_message'] = "A user account already exists for ID Number $id_number.";
+        header("Location: user_registration.php");
+        exit;
+    }
+    $check_id_stmt->close();
+
+    // Get staff details from county_staff table (just to verify existence, we don't need to store all fields)
+    $staff_stmt = $conn->prepare("SELECT first_name, last_name, email, sex, staff_phone, photo FROM county_staff WHERE id_number = ? AND status = 'active'");
     $staff_stmt->bind_param('s', $id_number);
     $staff_stmt->execute();
     $staff_result = $staff_stmt->get_result();
@@ -120,15 +134,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // Create full name
-    $full_name = trim($staff['first_name'] . ' ' . $staff['last_name'] . (!empty($staff['other_name']) ? ' ' . $staff['other_name'] : ''));
+    // Create full name (for display purposes only, not stored)
+    $full_name = trim($staff['first_name'] . ' ' . $staff['last_name']);
 
-    // Insert user with prepared statement - including all fields
+    // Format mobile number to ensure it fits in database column
+    $mobile = $staff['staff_phone'] ?? '';
+
+    // If mobile number is too long, truncate it (assuming column is VARCHAR(15) or similar)
+    if (strlen($mobile) > 15) {
+        $mobile = substr($mobile, 0, 15);
+    }
+
+    // Insert user with ONLY essential fields for authentication
+    // All other staff information will be accessed via JOIN with county_staff using id_number
     $sql = "INSERT INTO tblusers (
         username,
         first_name,
         last_name,
-        full_name,
         email,
         password,
         sex,
@@ -139,27 +161,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         status,
         date_created,
         created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)";
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)";
 
     $stmt = $conn->prepare($sql);
     $created_by = $_SESSION['full_name'] ?? 'Admin';
 
-    // Count the parameters: 13 placeholders (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), ?)
-    // But we have 12 bound parameters because 'Active' and NOW() are not bound
-    // So we need 12 bind parameters
-    $stmt->bind_param("ssssssssssss",
-        $username,           // 1
-        $staff['first_name'], // 2
-        $staff['last_name'],  // 3
-        $full_name,          // 4
-        $staff['email'],      // 5
-        $hashed_password,     // 6
-        $staff['sex'],        // 7
-        $staff['staff_phone'], // 8
-        $staff['id_number'],  // 9
-        $photo_blob,          // 10
-        $userrole,            // 11
-        $created_by           // 12
+    $stmt->bind_param("sssssssssss",
+        $username,              // 1
+        $staff['first_name'],   // 2
+        $staff['last_name'],    // 3
+        $staff['email'],        // 4
+        $hashed_password,       // 5
+        $staff['sex'],          // 6
+        $mobile,                // 7
+        $id_number,             // 8
+        $photo_blob,            // 9
+        $userrole,              // 10
+        $created_by             // 11
     );
 
     if ($stmt->execute()) {
@@ -252,6 +270,12 @@ while ($row = $roles_result->fetch_assoc()) {
             background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
         }
 
         .form-grid {
@@ -444,6 +468,20 @@ while ($row = $roles_result->fetch_assoc()) {
             margin-top: 5px;
         }
 
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            color: #004085;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .info-box i {
+            margin-right: 8px;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -506,9 +544,9 @@ while ($row = $roles_result->fetch_assoc()) {
                 </form>
 
                 <?php if ($staff_data): ?>
-                    <!-- Staff Preview -->
+                    <!-- Staff Preview - Shows all staff details for confirmation -->
                     <div class="staff-preview">
-                        <h4><i class="fas fa-user-check"></i> Staff Details Found</h4>
+                        <h4><i class="fas fa-user-check"></i> Staff Details Found - Confirmation Only</h4>
                         <div class="preview-grid">
                             <div class="preview-item">
                                 <strong>Full Name</strong>
@@ -550,7 +588,27 @@ while ($row = $roles_result->fetch_assoc()) {
                                 <strong>Subcounty</strong>
                                 <span><?php echo htmlspecialchars($staff_data['subcounty_name'] ?? 'N/A'); ?></span>
                             </div>
+                            <div class="preview-item">
+                                <strong>Level of Care</strong>
+                                <span><?php echo htmlspecialchars($staff_data['level_of_care_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Staff Status</strong>
+                                <span><?php echo htmlspecialchars($staff_data['staff_status'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="preview-item">
+                                <strong>Employment Status</strong>
+                                <span><?php echo htmlspecialchars($staff_data['employment_status'] ?? 'N/A'); ?></span>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Info Box explaining what will be stored -->
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Only essential login information will be stored in the users table.
+                        All other staff details will be linked via ID Number and accessed from the staff records when needed.
+                        The information above is shown for confirmation purposes only.
                     </div>
                 <?php endif; ?>
 
@@ -588,6 +646,19 @@ while ($row = $roles_result->fetch_assoc()) {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+
+                        <!-- Brief summary of what will be stored -->
+                        <div class="form-group full-width" style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                            <h5 style="color: #0d1a63; margin-bottom: 10px;"><i class="fas fa-database"></i> Information to be stored in users table:</h5>
+                            <ul style="margin-bottom: 0; color: #555;">
+                                <li>Username, Password, User Role</li>
+                                <li>Basic personal info: First Name, Last Name, Email, Sex, Mobile</li>
+                                <li>ID Number (as link to staff records)</li>
+                                <li>Photo (optional)</li>
+                                <li>Account status and creation details</li>
+                            </ul>
+                            <p class="mt-2 mb-0 text-muted"><small>All other staff information remains in the staff database and is linked via ID Number.</small></p>
                         </div>
 
                         <!-- Photo Section -->
@@ -651,5 +722,6 @@ while ($row = $roles_result->fetch_assoc()) {
         }
     });
     </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </body>
 </html>
