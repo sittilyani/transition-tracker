@@ -243,21 +243,21 @@ if (!$isAllowed) {
                 </div>
 
                 <!-- Staff Section -->
-                <!-- Staff Section -->
                 <div class="nav-section">
                     <div class="nav-section-title">Staff</div>
-                    <div class="nav-item">
-                        <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            View All Staff
-                        </a>
-                    </div>
                     <div class="nav-item">
                         <a href="../staff/staff_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/chart-bar.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Employee Dashboard
                         </a>
                     </div>
+                    <div class="nav-item">
+                        <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            View All Staff
+                        </a>
+                    </div>
+
                     <div class="nav-item">
                         <a href="../staff/employee_profile.php?staff_id=<?php echo isset($_SESSION['staff_id']) ? $_SESSION['staff_id'] : 0; ?>" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/user.svg" alt="" width="16" height="16" style="filter:invert(1)">
@@ -282,7 +282,7 @@ if (!$isAllowed) {
                     <div class="nav-item">
                         <a href="../trainings/training_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            New trainings
+                            View trainings
                         </a>
                     </div>
                     <div class="nav-item">
@@ -294,7 +294,7 @@ if (!$isAllowed) {
                     <div class="nav-item">
                         <a href="../trainings/staff_training_form.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Self trainings update
+                            Self staff trainings update
                         </a>
                     </div>
 

@@ -102,122 +102,105 @@ $sessions = mysqli_query($conn,
         }
 
         .session-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-
-        .session-card {
             background: white;
             border-radius: 10px;
-            padding: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease;
+            overflow: hidden;
         }
 
-        .session-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        .session-grid table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
         }
 
-        .session-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 15px;
+        .session-grid thead tr {
+            background: #0D1A63;
+            color: white;
+        }
+
+        .session-grid thead th {
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+
+        .session-grid tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s ease;
+        }
+
+        .session-grid tbody tr:last-child { border-bottom: none; }
+        .session-grid tbody tr:hover { background: #f8f9ff; }
+
+        .session-grid td {
+            padding: 11px 14px;
+            vertical-align: middle;
         }
 
         .session-code {
-            font-size: 14px;
+            font-size: 12px;
             color: #667eea;
             font-weight: 600;
-        }
-
-        .status {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .status.draft {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .status.submitted {
-            background: #28a745;
-            color: white;
-        }
-
-        .status.completed {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .status.cancelled {
-            background: #dc3545;
-            color: white;
+            white-space: nowrap;
         }
 
         .session-title {
-            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .session-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            color: #666;
+            color: #1a1e2e;
             font-size: 13px;
-            margin: 10px 0;
         }
 
-        .session-meta i {
-            width: 16px;
-            color: #667eea;
-            margin-right: 5px;
+        .status {
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
         }
+
+        .status.draft      { background: #ffc107; color: #212529; }
+        .status.submitted  { background: #28a745; color: white; }
+        .status.completed  { background: #17a2b8; color: white; }
+        .status.cancelled  { background: #dc3545; color: white; }
 
         .participant-count {
             background: #f0f0f0;
-            padding: 8px 12px;
+            padding: 3px 9px;
             border-radius: 8px;
-            display: inline-block;
-            font-size: 13px;
-            margin: 10px 0;
+            font-size: 12px;
+            white-space: nowrap;
         }
 
         .session-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            border-top: 1px solid #f0f0f0;
-            padding-top: 15px;
+            gap: 5px;
         }
 
         .action-btn {
-            flex: 1;
-            padding: 8px;
+            padding: 5px 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             text-align: center;
             text-decoration: none;
             color: white;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .view-btn { background: #17a2b8; }
-        .edit-btn { background: #ffc107; color: #212529; }
+        .view-btn  { background: #17a2b8; }
+        .edit-btn  { background: #ffc107; color: #212529; }
         .print-btn { background: #6c757d; }
 
         @media (max-width: 768px) {
-            .session-grid {
-                grid-template-columns: 1fr;
-            }
+            .session-grid { overflow-x: auto; }
         }
     </style>
 </head>
@@ -263,44 +246,79 @@ $sessions = mysqli_query($conn,
         </div>
 
         <div class="session-grid">
-            <?php if (mysqli_num_rows($sessions) > 0): ?>
-                <?php while ($row = mysqli_fetch_assoc($sessions)): ?>
-                    <div class="session-card">
-                        <div class="session-header">
-                            <span class="session-code"><?php echo htmlspecialchars($row['session_code']); ?></span>
-                            <span class="status <?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span>
-                        </div>
-                        <div class="session-title"><?php echo htmlspecialchars($row['course_name'] ?? 'N/A'); ?></div>
-                        <div class="session-meta">
-                            <div><i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($row['start_date'])); ?> - <?php echo date('M d, Y', strtotime($row['end_date'])); ?></div>
-                            <div><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($row['county_name'] ?? 'N/A'); ?>, <?php echo htmlspecialchars($row['sub_county_name'] ?? 'N/A'); ?></div>
-                            <div><i class="fas fa-user"></i> <?php echo htmlspecialchars($row['created_by']); ?></div>
-                        </div>
-                        <div class="participant-count">
-                            <i class="fas fa-users"></i> <?php echo $row['participant_count']; ?> Participant<?php echo $row['participant_count'] != 1 ? 's' : ''; ?>
-                        </div>
-                        <div class="session-actions">
-                            <a href="view_training.php?id=<?php echo $row['session_id']; ?>" class="action-btn view-btn">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                            <?php if ($row['status'] == 'draft'): ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Code</th>
+                        <th>Course</th>
+                        <th>Dates</th>
+                        <th>Location</th>
+                        <th>Created By</th>
+                        <th>Participants</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (mysqli_num_rows($sessions) > 0):
+                        $i = 1;
+                        while ($row = mysqli_fetch_assoc($sessions)): ?>
+                    <tr>
+                        <td style="color:#999;font-size:12px"><?php echo $i++; ?></td>
+                        <td><span class="session-code"><?php echo htmlspecialchars($row['session_code']); ?></span></td>
+                        <td><span class="session-title"><?php echo htmlspecialchars($row['course_name'] ?? 'N/A'); ?></span></td>
+                        <td style="color:#555;white-space:nowrap">
+                            <i class="fas fa-calendar" style="color:#667eea;margin-right:4px"></i>
+                            <?php echo date('d M Y', strtotime($row['start_date'])); ?> –
+                            <?php echo date('d M Y', strtotime($row['end_date'])); ?>
+                        </td>
+                        <td style="color:#555">
+                            <i class="fas fa-map-marker-alt" style="color:#667eea;margin-right:4px"></i>
+                            <?php echo htmlspecialchars($row['county_name'] ?? 'N/A'); ?>
+                            <?php if (!empty($row['sub_county_name'])): ?>,
+                                <?php echo htmlspecialchars($row['sub_county_name']); ?>
+                            <?php endif; ?>
+                        </td>
+                        <td style="color:#555">
+                            <i class="fas fa-user" style="color:#667eea;margin-right:4px"></i>
+                            <?php echo htmlspecialchars($row['created_by']); ?>
+                        </td>
+                        <td>
+                            <span class="participant-count">
+                                <i class="fas fa-users"></i>
+                                <?php echo $row['participant_count']; ?>
+                                <?php echo $row['participant_count'] != 1 ? 'participants' : 'participant'; ?>
+                            </span>
+                        </td>
+                        <td><span class="status <?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                        <td>
+                            <div class="session-actions">
+                                <a href="view_training.php?id=<?php echo $row['session_id']; ?>" class="action-btn view-btn">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <?php if ($row['status'] == 'draft'): ?>
                                 <a href="training_registration.php?edit=<?php echo $row['session_id']; ?>" class="action-btn edit-btn">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
-                            <?php endif; ?>
-                            <a href="print_training.php?id=<?php echo $row['session_id']; ?>" class="action-btn print-btn" target="_blank">
-                                <i class="fas fa-print"></i> Print
-                            </a>
-                        </div>
-                    </div>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <div style="grid-column: 1/-1; text-align: center; padding: 50px; background: white; border-radius: 10px;">
-                    <i class="fas fa-folder-open" style="font-size: 48px; color: #ccc; margin-bottom: 15px;"></i>
-                    <h3>No Training Sessions Found</h3>
-                    <p style="color: #666;">Click the "New Training" button to create your first training session.</p>
-                </div>
-            <?php endif; ?>
+                                <?php endif; ?>
+                                <a href="print_training.php?id=<?php echo $row['session_id']; ?>" class="action-btn print-btn" target="_blank">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endwhile; else: ?>
+                    <tr>
+                        <td colspan="9" style="text-align:center;padding:50px;color:#999">
+                            <i class="fas fa-folder-open" style="font-size:36px;display:block;margin-bottom:12px;opacity:.4"></i>
+                            <strong>No Training Sessions Found</strong><br>
+                            <span style="font-size:12px">Click "New Training Session" to create your first session.</span>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </body>

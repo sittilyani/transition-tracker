@@ -78,9 +78,9 @@ $age_result = mysqli_query($conn,
     "SELECT
         CASE
             WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) < 25 THEN 'Under 25'
-            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 25 AND 34 THEN '25 – 34'
-            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 35 AND 44 THEN '35 – 44'
-            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 45 AND 54 THEN '45 – 54'
+            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 25 AND 34 THEN '25 - 34'
+            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 35 AND 44 THEN '35 - 44'
+            WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 45 AND 54 THEN '45 - 54'
             ELSE '55+'
         END AS age_band,
         COUNT(*) AS total,
@@ -144,10 +144,10 @@ while ($r = mysqli_fetch_assoc($fac_result)) $facilities[] = $r;
 // --- RECENT HIRES (last 60 days) ---------------------------------------------
 $recent_hires = [];
 $rh_result = mysqli_query($conn,
-    "SELECT first_name, last_name, cadre_name, facility_name, created_at
+    "SELECT first_name, last_name, cadre_name, facility_name, date_of_joining
      FROM county_staff
-     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-     ORDER BY created_at DESC LIMIT 8");
+     WHERE date_of_joining >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+     ORDER BY date_of_joining DESC LIMIT 8");
 while ($r = mysqli_fetch_assoc($rh_result)) $recent_hires[] = $r;
 
 // --- LEAVE SUMMARY -----------------------------------------------------------
@@ -1164,7 +1164,7 @@ a { text-decoration: none; color: inherit; }
                             <td><span class="pill pill-blue"><?php echo htmlspecialchars($rh['cadre_name'] ?? '—'); ?></span></td>
                             <td><?php echo htmlspecialchars($rh['facility_name'] ?? '—'); ?></td>
                             <td style="color:var(--muted);font-size:12px">
-                                <?php echo date('d M Y', strtotime($rh['created_at'])); ?>
+                                <?php echo date('d M Y', strtotime($rh['date_of_joining'])); ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

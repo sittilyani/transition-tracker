@@ -223,10 +223,15 @@ $sessions = mysqli_query($conn,
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-calendar-alt"></i> Training Sessions</h1>
+        <div class="header-actions" style="display: flex; gap: 10px;">
+            <a href="staff_training_form.php" class="btn btn-primary">
+                <i class="fas fa-user-graduate"></i> My Trainings
+            </a>
+            <a href="view_staff_trainings.php" class="btn btn-primary">
+                <i class="fas fa-search"></i> View All Staff Trainings
+            </a>
             <a href="training_registration.php" class="btn btn-primary">
-                <i class="fas fa-plus"></i> New Training
+                <i class="fas fa-plus"></i> New Training Session
             </a>
         </div>
 
