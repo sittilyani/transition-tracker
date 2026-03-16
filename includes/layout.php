@@ -236,6 +236,12 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
+                        <a href="../transitions/integration_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Integration Dashboard
+                        </a>
+                    </div>
+                    <div class="nav-item">
                         <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Staff settings
@@ -305,6 +311,12 @@ if (!$isAllowed) {
                         <a href="../trainings/training_needs_assessment_questionaire.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Training Needs Assessment
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../transitions/integration_assessment.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Integration Assessment
                         </a>
                     </div>
                     <div class="nav-item">
