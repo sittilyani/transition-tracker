@@ -230,6 +230,12 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
+                        <a href="../trainings/training_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            TNA Dashboard
+                        </a>
+                    </div>
+                    <div class="nav-item">
                         <a href="../staff/staffslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Staff settings
@@ -242,7 +248,7 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../admin/admin_settings.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../settings/index.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/cog.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Admin Settings
                         </a>

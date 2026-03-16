@@ -95,10 +95,10 @@ while ($r = mysqli_fetch_assoc($age_result)) $age_dist[] = $r;
 // --- TOP COURSES STUDIED ------------------------------------------------------
 $courses = [];
 $courses_result = mysqli_query($conn,
-    "SELECT course_name, qualification_type, COUNT(*) AS cnt
+    "SELECT qualification_name, qualification_type, COUNT(*) AS cnt
      FROM employee_academics
-     WHERE course_name IS NOT NULL AND course_name != ''
-     GROUP BY course_name, qualification_type
+     WHERE qualification_name IS NOT NULL AND qualification_name != ''
+     GROUP BY qualification_name, qualification_type
      ORDER BY cnt DESC LIMIT 12");
 while ($r = mysqli_fetch_assoc($courses_result)) $courses[] = $r;
 
@@ -114,7 +114,7 @@ while ($r = mysqli_fetch_assoc($qt_result)) $qual_types[] = $r;
 $in_school_list = [];
 $is_result = mysqli_query($conn,
     "SELECT cs.first_name, cs.last_name, cs.cadre_name, cs.facility_name,
-            ea.qualification_type, ea.institution_name, ea.course_name,
+            ea.qualification_type, ea.institution_name, ea.qualification_name,
             ea.end_date, ea.completion_status
      FROM employee_academics ea
      JOIN county_staff cs ON cs.id_number = ea.id_number
@@ -1056,7 +1056,7 @@ a { text-decoration: none; color: inherit; }
                         <?php foreach ($courses as $ci => $c): ?>
                         <tr>
                             <td style="color:var(--muted);font-size:12px"><?php echo $ci + 1; ?></td>
-                            <td><strong><?php echo htmlspecialchars($c['course_name']); ?></strong></td>
+                            <td><strong><?php echo htmlspecialchars($c['qualification_name']); ?></strong></td>
                             <td><span class="pill pill-purple"><?php echo htmlspecialchars($c['qualification_type']); ?></span></td>
                             <td>
                                 <strong><?php echo $c['cnt']; ?></strong>
