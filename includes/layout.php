@@ -279,11 +279,17 @@ if (!$isAllowed) {
 
                 <!-- Staff Section -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Staff</div>
+                    <div class="nav-section-title">Integration</div>
                     <div class="nav-item">
-                        <a href="../staff/employee_profile.php?staff_id=<?php echo isset($_SESSION['staff_id']) ? $_SESSION['staff_id'] : 0; ?>" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/user.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            My Profile
+                        <a href="../transitions/integration_assessment_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Integration Assessment
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../transitions/transition_index.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/unlock.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Transition Assessment
                         </a>
                     </div>
                 </div>
@@ -313,12 +319,7 @@ if (!$isAllowed) {
                             Training Needs Assessment
                         </a>
                     </div>
-                    <div class="nav-item">
-                        <a href="../transitions/integration_assessment_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
-                            <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Integration Assessment
-                        </a>
-                    </div>
+
                     <div class="nav-item">
                         <a href="../trainings/staff_training_form.php" target="contentFrame" class="nav-link" style="background: #80FF80; color: #000000;" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
