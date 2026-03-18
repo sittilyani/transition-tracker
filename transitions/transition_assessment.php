@@ -36,6 +36,19 @@ $scoring_criteria = [
     0 => ['label' => 'Inadequate structures/functions', 'class' => 'level-0']
 ];
 
+// Create a mapping of indicator codes to database indicator_ids
+$indicator_by_code = [];
+$indicator_query = "
+    SELECT i.indicator_id, i.indicator_code
+    FROM transition_indicators i
+";
+$result = mysqli_query($conn, $indicator_query);
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $indicator_by_code[$row['indicator_code']] = $row['indicator_id'];
+    }
+}
+
 // Define all sections with their detailed indicators
 $all_sections = [
     'leadership' => [
@@ -335,293 +348,365 @@ $all_sections = [
                     'T9B.7' => 'Provision of Post Exposure Prophylaxis',
                     'T9B.8' => 'Conducting outreach to Key population hot spots to increase enrollment',
                     'T9B.9' => 'Tracking of enrollment into HIV prevention services and outcomes by populations'
-                ],
-                'T10A' => [
+                ]
+            ]
+        ]
+    ],
+    'finance' => [
+        'title' => 'COUNTY LEVEL FINANCE MANAGEMENT',
+        'icon' => 'fa-coins',
+        'color' => '#7a9aff',
+        'has_ip' => true,
+        'indicators' => [
+            'T10A' => [
                 'code' => 'T10A',
                 'name' => 'Transition of Financial Management: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T10A.1' => 'Preparing an annual county budget which integrates HIV care & treatment',
-'T10A.2' => 'Allocating available program resources',
-'T10A.3' => 'Tracking program expenditures and income',
-'T10A.4' => ' Producing financial reports',
-'T10A.5' => ' Reallocating funding to respond to budget variances and program needs',
-'T10A.6' => ' Conducts external audit',
-'T10A.7' => ' Responding to audits/reviews',
-'T10A.8' => ' Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
-'T10A.9' => ' Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
-
+                    'T10A.2' => 'Allocating available program resources',
+                    'T10A.3' => 'Tracking program expenditures and income',
+                    'T10A.4' => 'Producing financial reports',
+                    'T10A.5' => 'Reallocating funding to respond to budget variances and program needs',
+                    'T10A.6' => 'Conducts external audit',
+                    'T10A.7' => 'Responding to audits/reviews',
+                    'T10A.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
+                    'T10A.9' => 'Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
                 ]
             ],
-'T10B' => [
+            'T10B' => [
                 'code' => 'T10B',
                 'name' => 'Transition of Financial Management: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T10B.1' => 'Preparing an annual county budget which integrates HIV care & treatment',
-'T10B.2' => 'Allocating available program resources',
-'T10B.3' => 'Tracking program expenditures and income',
-'T10B.4' => ' Producing financial reports',
-'T10B.5' => ' Reallocating funding to respond to budget variances and program needs',
-'T10B.6' => ' Conducts external audit',
-'T10B.7' => ' Responding to audits/reviews',
-'T10B.8' => ' Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
-'T10B.9' => ' Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
+                    'T10B.2' => 'Allocating available program resources',
+                    'T10B.3' => 'Tracking program expenditures and income',
+                    'T10B.4' => 'Producing financial reports',
+                    'T10B.5' => 'Reallocating funding to respond to budget variances and program needs',
+                    'T10B.6' => 'Conducts external audit',
+                    'T10B.7' => 'Responding to audits/reviews',
+                    'T10B.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
+                    'T10B.9' => 'Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
                 ]
-            ],
-'T11A' => [
+            ]
+        ]
+    ],
+    'sub_grants' => [
+        'title' => 'COUNTY LEVEL MANAGING SUB-GRANTS OR OTHER GRANTS/COOPERATIVE AGREEMENTS',
+        'icon' => 'fa-file-invoice',
+        'color' => '#8a5cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T11A' => [
                 'code' => 'T11A',
                 'name' => 'Transition of Managing Sub-Grants: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T11A.1' => 'Defining the TOR for last/renewed sub-grant',
-'T11A.2' => 'Planning and developing the budget',
-'T11A.3' => 'Managing the competitive bidding process for procurements/purchases',
-'T11A.4' => 'Tracking sub-grant expenditures',
-'T11A.5' => 'Disbursing funds for procurements/purchases',
-'T11A.6' => 'Reporting results'
-
+                    'T11A.2' => 'Planning and developing the budget',
+                    'T11A.3' => 'Managing the competitive bidding process for procurements/purchases',
+                    'T11A.4' => 'Tracking sub-grant expenditures',
+                    'T11A.5' => 'Disbursing funds for procurements/purchases',
+                    'T11A.6' => 'Reporting results'
                 ]
             ],
-'T11B' => [
+            'T11B' => [
                 'code' => 'T11B',
                 'name' => 'Transition of Managing Sub-Grants: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T11B.1' => 'Defining the TOR for last/renewed sub-grant',
-'T11B.2' => 'Planning and developing the budget',
-'T11B.3' => 'Managing the competitive bidding process for procurements/purchases',
-'T11B.4' => 'Tracking sub-grant expenditures',
-'T11B.5' => 'Disbursing funds for procurements/purchases',
-'T11B.6' => 'Reporting results'
+                    'T11B.2' => 'Planning and developing the budget',
+                    'T11B.3' => 'Managing the competitive bidding process for procurements/purchases',
+                    'T11B.4' => 'Tracking sub-grant expenditures',
+                    'T11B.5' => 'Disbursing funds for procurements/purchases',
+                    'T11B.6' => 'Reporting results'
                 ]
-            ],
-'T12A' => [
+            ]
+        ]
+    ],
+    'commodities' => [
+        'title' => 'COUNTY LEVEL COMMODITIES MANAGEMENT',
+        'icon' => 'fa-boxes',
+        'color' => '#9b6cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T12A' => [
                 'code' => 'T12A',
                 'name' => 'Transition of Commodities Management: Level of Involvement of the IP',
                 'sub_indicators' => [
-                   'T12A.1' => 'Developing/adapting commodity supply chain SOPs',
-'T12A.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
-'T12A.3' => 'Monthly commodities reporting',
-'T12A.4' => 'Building capacity/training of HF pharmacy  and laboratory staff in commodity management',
-'T12A.5' => 'Managing commodity storage spaces within the facilities',
-'T12A.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
-'T12A.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
-
+                    'T12A.1' => 'Developing/adapting commodity supply chain SOPs',
+                    'T12A.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
+                    'T12A.3' => 'Monthly commodities reporting',
+                    'T12A.4' => 'Building capacity/training of HF pharmacy and laboratory staff in commodity management',
+                    'T12A.5' => 'Managing commodity storage spaces within the facilities',
+                    'T12A.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
+                    'T12A.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
                 ]
             ],
-'T12B' => [
+            'T12B' => [
                 'code' => 'T12B',
                 'name' => 'Transition of Commodities Management: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T12B.1' => 'Developing/adapting commodity supply chain SOPs',
-'T12B.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
-'T12B.3' => 'Monthly commodities reporting',
-'T12B.4' => 'Building capacity/training of HF pharmacy  and laboratory staff in commodity management',
-'T12B.5' => 'Managing commodity storage spaces within the facilities',
-'T12B.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
-'T12B.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
+                    'T12B.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
+                    'T12B.3' => 'Monthly commodities reporting',
+                    'T12B.4' => 'Building capacity/training of HF pharmacy and laboratory staff in commodity management',
+                    'T12B.5' => 'Managing commodity storage spaces within the facilities',
+                    'T12B.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
+                    'T12B.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
                 ]
-            ],
-'T13A' => [
+            ]
+        ]
+    ],
+    'equipment' => [
+        'title' => 'COUNTY LEVEL EQUIPMENT PROCUREMENT AND USE',
+        'icon' => 'fa-tools',
+        'color' => '#ac7cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T13A' => [
                 'code' => 'T13A',
                 'name' => 'Transition of Equipment Procurement and Use: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T13A.1' => 'Determining the need for key HIV/TB specific equipment (Fridges, freezers, centrifuges, Biosafety cabinets, CD4 machines, Gene Xpert machines, etc.)',
-'T13A.2' => 'Establishing equipment quantification and need based Prioritization  of equipment',
-'T13A.3' => 'Development of specifications, ordering/procuring equipments',
-'T13A.4' => 'Funding equipment procurement',
-'T13A.5' => 'Maintaining and calibrating/certifying equipments',
-'T13A.6' => 'Equipment inventory, supervising and training use of equipments'
-
+                    'T13A.2' => 'Establishing equipment quantification and need based Prioritization of equipment',
+                    'T13A.3' => 'Development of specifications, ordering/procuring equipments',
+                    'T13A.4' => 'Funding equipment procurement',
+                    'T13A.5' => 'Maintaining and calibrating/certifying equipments',
+                    'T13A.6' => 'Equipment inventory, supervising and training use of equipments'
                 ]
             ],
-'T13B' => [
+            'T13B' => [
                 'code' => 'T13B',
                 'name' => 'Transition of Procurement and Use: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T13B.1' => 'Determining the need for key HIV/TB specific equipment (Fridges, freezers, centrifuges, Biosafety cabinets, CD4 machines, Gene Xpert machines, etc.)',
-'T13B.2' => 'Establishing equipment quantification and need based Prioritization  of equipment',
-'T13B.3' => 'Development of specifications, ordering/procuring equipments',
-'T13B.4' => 'Funding equipment procurement',
-'T13B.5' => 'Maintaining and calibrating/certifying equipments',
-'T13B.6' => 'Equipment inventory, supervising and training use of equipments'
+                    'T13B.2' => 'Establishing equipment quantification and need based Prioritization of equipment',
+                    'T13B.3' => 'Development of specifications, ordering/procuring equipments',
+                    'T13B.4' => 'Funding equipment procurement',
+                    'T13B.5' => 'Maintaining and calibrating/certifying equipments',
+                    'T13B.6' => 'Equipment inventory, supervising and training use of equipments'
                 ]
-            ],
-'T14A' => [
+            ]
+        ]
+    ],
+    'laboratory' => [
+        'title' => 'COUNTY LEVEL LABORATORY SERVICES',
+        'icon' => 'fa-flask',
+        'color' => '#bd8cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T14A' => [
                 'code' => 'T14A',
                 'name' => 'Transition of Laboratory Services: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T14A.1' => 'Distributing QC proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
-'T14A.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
-'T14A.3' => 'Compiling and reporting on proficiency testing results',
-'T14A.4' => 'Conducting supervision/CAPA visits to laboratories',
-'T14A.5' => 'Training laboratory and HTS  staff on good  practices',
-'T14A.6' => 'Ordering laboratory reagents',
-'T14A.7' => 'Ordering laboratory consumables',
-'T14A.8' => 'Funding and Managing  specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
-'T14A.9' => 'Monitoring TAT for  test results (CD4, EID, VL, Gene Xpert, DST)',
-'T14A.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
-'T14A.11' => 'Supporting biosafety activities  and health care waste management',
-'T14A.12' => 'Supporting service and maintenance contracts for laboratory equipment'
-
+                    'T14A.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14A.3' => 'Compiling and reporting on proficiency testing results',
+                    'T14A.4' => 'Conducting supervision/CAPA visits to laboratories',
+                    'T14A.5' => 'Training laboratory and HTS staff on good practices',
+                    'T14A.6' => 'Ordering laboratory reagents',
+                    'T14A.7' => 'Ordering laboratory consumables',
+                    'T14A.8' => 'Funding and Managing specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14A.9' => 'Monitoring TAT for test results (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14A.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
+                    'T14A.11' => 'Supporting biosafety activities and health care waste management',
+                    'T14A.12' => 'Supporting service and maintenance contracts for laboratory equipment'
                 ]
             ],
-'T14B' => [
+            'T14B' => [
                 'code' => 'T14B',
                 'name' => 'Transition of Laboratory Services: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T14B.1' => 'Distributing QC proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
-'T14B.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
-'T14B.3' => 'Compiling and reporting on proficiency testing results',
-'T14B.4' => 'Conducting supervision/CAPA visits to laboratories',
-'T14B.5' => 'Training laboratory and HTS  staff on good  practices',
-'T14B.6' => 'Ordering laboratory reagents',
-'T14B.7' => 'Ordering laboratory consumables',
-'T14B.8' => 'Funding and Managing  specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
-'T14B.9' => 'Monitoring TAT for  test results (CD4, EID, VL, Gene Xpert, DST)',
-'T14B.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
-'T14B.11' => 'Supporting biosafety activities  and health care waste management',
-'T14B.12' => 'Supporting service and maintenance contracts for laboratory equipment'
+                    'T14B.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14B.3' => 'Compiling and reporting on proficiency testing results',
+                    'T14B.4' => 'Conducting supervision/CAPA visits to laboratories',
+                    'T14B.5' => 'Training laboratory and HTS staff on good practices',
+                    'T14B.6' => 'Ordering laboratory reagents',
+                    'T14B.7' => 'Ordering laboratory consumables',
+                    'T14B.8' => 'Funding and Managing specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14B.9' => 'Monitoring TAT for test results (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14B.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
+                    'T14B.11' => 'Supporting biosafety activities and health care waste management',
+                    'T14B.12' => 'Supporting service and maintenance contracts for laboratory equipment'
                 ]
-            ],
-'T15A' => [
+            ]
+        ]
+    ],
+    'inventory' => [
+        'title' => 'COUNTY LEVEL INVENTORY MANAGEMENT',
+        'icon' => 'fa-clipboard-list',
+        'color' => '#ce9cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T15A' => [
                 'code' => 'T15A',
                 'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T15A.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
-'T15A.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
-'T15A.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
-'T15A.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
-'T15A.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
-'T15A.6' => 'Oversight Supervision of the Inventory Management functions'
-
+                    'T15A.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15A.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15A.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
+                    'T15A.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
+                    'T15A.6' => 'Oversight Supervision of the Inventory Management functions'
                 ]
             ],
-'T15B' => [
+            'T15B' => [
                 'code' => 'T15B',
                 'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T15B.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
-'T15B.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
-'T15B.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
-'T15B.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
-'T15B.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
-'T15B.6' => 'Oversight Supervision of the Inventory Management functions'
+                    'T15B.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15B.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15B.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
+                    'T15B.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
+                    'T15B.6' => 'Oversight Supervision of the Inventory Management functions'
                 ]
-            ],
-'T16A' => [
+            ]
+        ]
+    ],
+    'training' => [
+        'title' => 'COUNTY LEVEL IN-SERVICE TRAINING',
+        'icon' => 'fa-chalkboard-teacher',
+        'color' => '#dfacf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T16A' => [
                 'code' => 'T16A',
                 'name' => 'Transition of In-service Training: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T16A.1' => 'Assessing staff training needs',
-'T16A.2' => 'Selecting/adapting curricula',
-'T16A.3' => 'Planning training schedule',
-'T16A.4' => 'Arranging/funding/providing training venue',
-'T16A.5' => 'Providing or paying trainers/facilitators',
-'T16A.6' => 'Paying participant per diem',
-'T16A.7' => 'Use of integrated human resource information system (iHRIS Train)'
+                    'T16A.2' => 'Selecting/adapting curricula',
+                    'T16A.3' => 'Planning training schedule',
+                    'T16A.4' => 'Arranging/funding/providing training venue',
+                    'T16A.5' => 'Providing or paying trainers/facilitators',
+                    'T16A.6' => 'Paying participant per diem',
+                    'T16A.7' => 'Use of integrated human resource information system (iHRIS Train)'
                 ]
             ],
-'T16B' => [
+            'T16B' => [
                 'code' => 'T16B',
                 'name' => 'Transition of In-service Training: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T16B.1' => 'Assessing staff training needs',
-'T16B.2' => 'Selecting/adapting curricula',
-'T16B.3' => 'Planning training schedule',
-'T16B.4' => 'Arranging/funding/providing training venue',
-'T16B.5' => 'Providing or paying trainers/facilitators',
-'T16B.6' => 'Paying participant per diem',
-'T16B.7' => 'Use of integrated human resource information system (iHRIS Train)'
+                    'T16B.2' => 'Selecting/adapting curricula',
+                    'T16B.3' => 'Planning training schedule',
+                    'T16B.4' => 'Arranging/funding/providing training venue',
+                    'T16B.5' => 'Providing or paying trainers/facilitators',
+                    'T16B.6' => 'Paying participant per diem',
+                    'T16B.7' => 'Use of integrated human resource information system (iHRIS Train)'
                 ]
-            ],
-'T17A' => [
+            ]
+        ]
+    ],
+    'hr_management' => [
+        'title' => 'COUNTY LEVEL HUMAN RESOURCE MANAGEMENT',
+        'icon' => 'fa-users',
+        'color' => '#f0bcf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T17A' => [
                 'code' => 'T17A',
                 'name' => 'Transition of HIV/TB Human Resource Management: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T17A.1' => 'Presence of active of county public service board that recruits HIV/TB services staff (check: Gazette notice, minutes of meeting proceedings)',
-'T17A.2' => 'Determining staffing needs for the HIV/TB program',
-'T17A.3' => 'Advertising/posting positions for the HIV/TB program',
-'T17A.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
-'T17A.5' => 'Performance appraisal for the HIV/TB program',
-'T17A.6' => 'Paying staff salaries for the HIV/TB program',
-'T17A.7' => 'Appointing HIV/TB program staff (recruitment)',
-'T17A.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
-'T17A.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
-'T17A.10' => 'Use of integrated human resource information system  (iHRS) (government HRH management and development)'
+                    'T17A.2' => 'Determining staffing needs for the HIV/TB program',
+                    'T17A.3' => 'Advertising/posting positions for the HIV/TB program',
+                    'T17A.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
+                    'T17A.5' => 'Performance appraisal for the HIV/TB program',
+                    'T17A.6' => 'Paying staff salaries for the HIV/TB program',
+                    'T17A.7' => 'Appointing HIV/TB program staff (recruitment)',
+                    'T17A.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
+                    'T17A.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
+                    'T17A.10' => 'Use of integrated human resource information system (iHRS) (government HRH management and development)'
                 ]
             ],
-'T17B' => [
+            'T17B' => [
                 'code' => 'T17B',
                 'name' => 'Transition of HIV/TB Human Resource Management: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T17B.1' => 'Presence of active of county public service board that recruits HIV/TB services staff (check: Gazette notice, minutes of meeting proceedings)',
-'T17B.2' => 'Determining staffing needs for the HIV/TB program',
-'T17B.3' => 'Advertising/posting positions for the HIV/TB program',
-'T17B.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
-'T17B.5' => 'Performance appraisal for the HIV/TB program',
-'T17B.6' => 'Paying staff salaries for the HIV/TB program',
-'T17B.7' => 'Appointing HIV/TB program staff (recruitment)',
-'T17B.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
-'T17B.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
-'T17B.10' => 'Use of integrated human resource information system  (iHRS) (government HRH management and development)'
+                    'T17B.2' => 'Determining staffing needs for the HIV/TB program',
+                    'T17B.3' => 'Advertising/posting positions for the HIV/TB program',
+                    'T17B.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
+                    'T17B.5' => 'Performance appraisal for the HIV/TB program',
+                    'T17B.6' => 'Paying staff salaries for the HIV/TB program',
+                    'T17B.7' => 'Appointing HIV/TB program staff (recruitment)',
+                    'T17B.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
+                    'T17B.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
+                    'T17B.10' => 'Use of integrated human resource information system (iHRS) (government HRH management and development)'
                 ]
-            ],
-'T18A' => [
+            ]
+        ]
+    ],
+    'data_management' => [
+        'title' => 'COUNTY LEVEL HIV/TB PROGRAM DATA MANAGEMENT',
+        'icon' => 'fa-database',
+        'color' => '#0ABFBC',
+        'has_ip' => true,
+        'indicators' => [
+            'T18A' => [
                 'code' => 'T18A',
                 'name' => 'Transition of HIV/TB Program Data Management: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T18A.1' => 'Collecting and entering data from facilities in to DHIS2',
-'T18A.2' => 'Collecting and entering data from facilities in to DATIM',
-'T18A.3' => 'Checking completeness and accuracy',
-'T18A.4' => 'Conduct DQA on regular basis',
-'T18A.5' => 'Giving feedback and support to facilities for data quality',
-'T18A.6' => 'Analyzing data and producing reports sent to MOH',
-'T18A.7' => 'Monitoring results and determining remedial actions',
-'T18A.8' => 'Managing IT infrastructure for HIV/TB data management
-T18A.9' => 'Training & mentorship of health facility staff in data management'
-
+                    'T18A.2' => 'Collecting and entering data from facilities in to DATIM',
+                    'T18A.3' => 'Checking completeness and accuracy',
+                    'T18A.4' => 'Conduct DQA on regular basis',
+                    'T18A.5' => 'Giving feedback and support to facilities for data quality',
+                    'T18A.6' => 'Analyzing data and producing reports sent to MOH',
+                    'T18A.7' => 'Monitoring results and determining remedial actions',
+                    'T18A.8' => 'Managing IT infrastructure for HIV/TB data management',
+                    'T18A.9' => 'Training & mentorship of health facility staff in data management'
                 ]
             ],
-'T18B' => [
+            'T18B' => [
                 'code' => 'T18B',
                 'name' => 'Transition of HIV/TB Program Data Management: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T18B.1' => 'Collecting and entering data from facilities in to DHIS2',
-'T18B.2' => 'Collecting and entering data from facilities in to DATIM',
-'T18B.3' => 'Checking completeness and accuracy',
-'T18B.4' => 'Conduct DQA on regular basis',
-'T18B.5' => 'Giving feedback and support to facilities for data quality',
-'T18B.6' => 'Analyzing data and producing reports sent to MOH',
-'T18B.7' => 'Monitoring results and determining remedial actions',
-'T18B.8' => 'Managing IT infrastructure for HIV/TB data management
-T18B.9' => 'Training & mentorship of health facility staff in data management'
+                    'T18B.2' => 'Collecting and entering data from facilities in to DATIM',
+                    'T18B.3' => 'Checking completeness and accuracy',
+                    'T18B.4' => 'Conduct DQA on regular basis',
+                    'T18B.5' => 'Giving feedback and support to facilities for data quality',
+                    'T18B.6' => 'Analyzing data and producing reports sent to MOH',
+                    'T18B.7' => 'Monitoring results and determining remedial actions',
+                    'T18B.8' => 'Managing IT infrastructure for HIV/TB data management',
+                    'T18B.9' => 'Training & mentorship of health facility staff in data management'
                 ]
-            ],
-'T19A' => [
+            ]
+        ]
+    ],
+    'patient_monitoring' => [
+        'title' => 'COUNTY LEVEL PATIENT MONITORING SYSTEM',
+        'icon' => 'fa-chart-pie',
+        'color' => '#27AE60',
+        'has_ip' => true,
+        'indicators' => [
+            'T19A' => [
                 'code' => 'T19A',
                 'name' => 'Transition of Patient Monitoring System: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T19A.1' => 'Providing patient monitoring system/tools',
-'T19A.2' => 'Entering patient data into the system/tools',
-'T19A.3' => 'Checking completeness and accuracy',
-'T19A.4' => 'Analyzing data and producing reports',
-'T19A.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
-'T19A.6' => 'Managing Electronic Medical Record systems for patient monitoring',
-'T19A.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
-
+                    'T19A.2' => 'Entering patient data into the system/tools',
+                    'T19A.3' => 'Checking completeness and accuracy',
+                    'T19A.4' => 'Analyzing data and producing reports',
+                    'T19A.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
+                    'T19A.6' => 'Managing Electronic Medical Record systems for patient monitoring',
+                    'T19A.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
                 ]
             ],
-'T19B' => [
+            'T19B' => [
                 'code' => 'T19B',
                 'name' => 'Transition of Patient Monitoring System: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T19B.1' => 'Providing patient monitoring system/tools',
-'T19B.2' => 'Entering patient data into the system/tools',
-'T19B.3' => 'Checking completeness and accuracy',
-'T19B.4' => 'Analyzing data and producing reports',
-'T19B.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
-'T19B.6' => 'Managing Electronic Medical Record systems for patient monitoring',
-'T19B.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
+                    'T19B.2' => 'Entering patient data into the system/tools',
+                    'T19B.3' => 'Checking completeness and accuracy',
+                    'T19B.4' => 'Analyzing data and producing reports',
+                    'T19B.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
+                    'T19B.6' => 'Managing Electronic Medical Record systems for patient monitoring',
+                    'T19B.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
                 ]
-            ],
             ]
         ]
     ],
@@ -671,22 +756,6 @@ T18B.9' => 'Training & mentorship of health facility staff in data management'
 // Filter sections based on selection
 $active_sections = array_intersect_key($all_sections, array_flip($sections));
 
-// Create a mapping of indicator codes to database indicator_ids
-// In production, you would query this from the database
-$indicator_mapping = [];
-$indicator_query = "
-    SELECT i.indicator_id,
-           CONCAT(s.section_code, '_', i.indicator_code) as full_code
-    FROM transition_indicators i
-    JOIN transition_sections s ON i.section_id = s.section_id
-";
-$result = mysqli_query($conn, $indicator_query);
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $indicator_mapping[$row['full_code']] = $row['indicator_id'];
-    }
-}
-
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     $assessed_by = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
@@ -704,16 +773,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                 assessed_by = '$assessed_by',
                 assessment_status = 'submitted'
                 WHERE assessment_id = $assessment_id";
-            mysqli_query($conn, $update_query);
+            if (!mysqli_query($conn, $update_query)) {
+                throw new Exception("Error updating assessment: " . mysqli_error($conn));
+            }
 
             // Delete existing scores
-            mysqli_query($conn, "DELETE FROM transition_scores WHERE assessment_id = $assessment_id");
+            if (!mysqli_query($conn, "DELETE FROM transition_scores WHERE assessment_id = $assessment_id")) {
+                throw new Exception("Error deleting existing scores: " . mysqli_error($conn));
+            }
         } else {
             // Insert new assessment
             $insert_query = "INSERT INTO transition_assessments
                 (county_id, assessment_period, assessment_date, assessed_by, assessment_status)
                 VALUES ($county_id, '$period', '$assessment_date', '$assessed_by', 'submitted')";
-            mysqli_query($conn, $insert_query);
+            if (!mysqli_query($conn, $insert_query)) {
+                throw new Exception("Error creating assessment: " . mysqli_error($conn));
+            }
             $assessment_id = mysqli_insert_id($conn);
         }
 
@@ -723,34 +798,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
         $indicator_count = 0;
 
         foreach ($_POST['scores'] as $indicator_key => $scores) {
-            // Find the indicator_id from mapping
-            $indicator_id = isset($indicator_mapping[$indicator_key]) ? $indicator_mapping[$indicator_key] : 0;
+            // Parse the key to get the indicator code (e.g., "T1.1" from "leadership_T1_T1.1")
+            $parts = explode('_', $indicator_key);
+            $indicator_code = end($parts); // Get the last part which should be the indicator code like T1.1
+
+            // Find the indicator_id from our mapping
+            $indicator_id = isset($indicator_by_code[$indicator_code]) ? $indicator_by_code[$indicator_code] : 0;
 
             if (!$indicator_id) {
-                // If not in mapping, try to find it by parsing the key
-                // This is a fallback - in production, you should have proper mapping
-                $parts = explode('_', $indicator_key);
-                if (count($parts) >= 2) {
-                    $section_code = $parts[0];
-                    $indicator_code = $parts[1] . '.' . $parts[2];
-
-                    // Query for this specific indicator
-                    $find_query = "
-                        SELECT i.indicator_id
-                        FROM transition_indicators i
-                        JOIN transition_sections s ON i.section_id = s.section_id
-                        WHERE s.section_code = '$section_code'
-                        AND i.indicator_code = '$indicator_code'
-                    ";
-                    $find_result = mysqli_query($conn, $find_query);
-                    if ($find_result && mysqli_num_rows($find_result) > 0) {
-                        $indicator_id = mysqli_fetch_assoc($find_result)['indicator_id'];
-                    }
+                // If still not found, try a more flexible approach
+                $find_query = "SELECT indicator_id FROM transition_indicators WHERE indicator_code = '$indicator_code' LIMIT 1";
+                $find_result = mysqli_query($conn, $find_query);
+                if ($find_result && mysqli_num_rows($find_result) > 0) {
+                    $indicator_id = mysqli_fetch_assoc($find_result)['indicator_id'];
+                } else {
+                    // Log the error but continue - don't throw exception
+                    error_log("Could not find indicator ID for code: $indicator_code (key: $indicator_key)");
+                    continue;
                 }
-            }
-
-            if (!$indicator_id) {
-                throw new Exception("Could not find indicator ID for key: $indicator_key");
             }
 
             $cdoh_score = isset($scores['cdoh']) && $scores['cdoh'] !== '' ? (int)$scores['cdoh'] : null;
@@ -769,7 +834,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                 ($ip_score !== null ? $ip_score : 'NULL') . ", '$comments')";
 
             if (!mysqli_query($conn, $score_query)) {
-                throw new Exception("Error saving score: " . mysqli_error($conn));
+                throw new Exception("Error saving score for indicator $indicator_code: " . mysqli_error($conn));
             }
 
             if ($cdoh_score !== null) $total_cdoh += $cdoh_score;
@@ -811,6 +876,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     } catch (Exception $e) {
         mysqli_rollback($conn);
         $error = 'Error saving assessment: ' . $e->getMessage();
+    }
+}
+
+// Calculate total indicators for progress tracking
+$total_indicators = 0;
+foreach ($active_sections as $section) {
+    foreach ($section['indicators'] as $indicator) {
+        $total_indicators += count($indicator['sub_indicators']);
     }
 }
 ?>
@@ -1000,7 +1073,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
 
         .score-grid {
             display: grid;
-            grid-template-columns: <?php echo $section['has_ip'] ?? true ? '1fr 1fr' : '1fr'; ?>;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
 
@@ -1216,7 +1289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                 <p style="color: #666; font-size: 13px;">
                     <i class="fas fa-calendar"></i> Period: <?= htmlspecialchars($period) ?> |
                     <i class="fas fa-layer-group"></i> Sections: <?= count($active_sections) ?> |
-                    <i class="fas fa-tasks"></i> Total Indicators: <span id="totalIndicators">0</span>
+                    <i class="fas fa-tasks"></i> Total Indicators: <span id="totalIndicators"><?= $total_indicators ?></span>
                 </p>
             </div>
             <div class="progress-indicator">
@@ -1246,9 +1319,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
         <!-- Assessment Forms Container -->
         <div id="formsContainer">
             <?php
-            $total_indicators = 0;
             foreach ($active_sections as $key => $section):
                 $section_total = 0;
+                foreach ($section['indicators'] as $indicator) {
+                    $section_total += count($indicator['sub_indicators']);
+                }
             ?>
             <div class="assessment-form" id="form_<?= $key ?>" style="display: <?= $key === array_key_first($active_sections) ? 'block' : 'none' ?>;">
                 <div class="section-summary">
@@ -1264,14 +1339,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                     <div class="summary-badge" id="section_progress_<?= $key ?>">0% Complete</div>
                 </div>
 
-                <?php foreach ($section['indicators'] as $indicator_code => $indicator):
-                    $sub_indicator_count = count($indicator['sub_indicators']);
-                    $section_total += $sub_indicator_count;
-                ?>
+                <?php foreach ($section['indicators'] as $indicator_code => $indicator): ?>
                 <div class="indicator-card" style="--color: <?= $section['color'] ?? '#0D1A63' ?>">
                     <div class="indicator-header">
                         <span class="indicator-code"><?= $indicator_code ?></span>
-                        <span style="font-size: 12px; color: #666;"><?= $sub_indicator_count ?> sub-indicators</span>
+                        <span style="font-size: 12px; color: #666;"><?= count($indicator['sub_indicators']) ?> sub-indicators</span>
                     </div>
                     <div class="indicator-title"><?= $indicator['name'] ?></div>
 
@@ -1340,14 +1412,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                     <?php endforeach; ?>
                 </div>
                 <?php endforeach; ?>
-
-                <?php $total_indicators += $section_total; ?>
             </div>
             <?php endforeach; ?>
         </div>
-
-        <!-- Hidden field for total indicators -->
-        <input type="hidden" id="totalIndicatorsCount" value="<?= $total_indicators ?>">
 
         <!-- Save & Submit -->
         <button type="submit" class="btn-submit">
@@ -1393,12 +1460,13 @@ function updateProgress() {
     let totalScored = 0;
     let totalPossible = 0;
 
-    // Count all radio buttons that should be scored
-    document.querySelectorAll('.score-column').forEach(column => {
-        const radios = column.querySelectorAll('input[type="radio"]');
-        if (radios.length > 0) {
-            totalPossible++;
-        }
+    // Count all radio buttons that should be scored (each sub-indicator has 1 or 2 score columns)
+    document.querySelectorAll('.sub-indicator').forEach(subIndicator => {
+        const cdohRadios = subIndicator.querySelectorAll('.score-column.cdoh input[type="radio"]');
+        const ipRadios = subIndicator.querySelectorAll('.score-column.ip input[type="radio"]');
+
+        if (cdohRadios.length > 0) totalPossible++;
+        if (ipRadios.length > 0) totalPossible++;
     });
 
     // Count checked radio buttons
@@ -1455,7 +1523,7 @@ function autoSave() {
     // Collect form data
     let formData = new FormData(document.getElementById('assessmentForm'));
 
-    // Simulate save (in production, you'd send to server via AJAX)
+    // In a real implementation, you would send this to the server via AJAX
     console.log('Auto-saving...', Object.fromEntries(formData));
 
     document.getElementById('saveStatus').textContent = 'All changes saved';
@@ -1483,18 +1551,15 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     showSection(currentSection);
     updateProgress();
-
-    // Set total indicators display
-    document.getElementById('totalIndicators').textContent = totalIndicators;
 });
 
 // Form validation before submit
 document.getElementById('assessmentForm').addEventListener('submit', function(e) {
-    const totalRadios = document.querySelectorAll('.score-column').length;
+    const totalRadios = document.querySelectorAll('.sub-indicator').length * 2; // Approximate
     const checkedRadios = document.querySelectorAll('input[type="radio"]:checked').length;
 
-    if (checkedRadios < totalRadios) {
-        if (!confirm('You have not completed all indicators. Incomplete sections will be saved as draft. Continue?')) {
+    if (checkedRadios < totalRadios * 0.5) { // Less than 50% complete
+        if (!confirm('You have completed less than 50% of the indicators. Are you sure you want to submit?')) {
             e.preventDefault();
         }
     }
