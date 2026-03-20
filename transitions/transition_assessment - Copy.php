@@ -27,16 +27,34 @@ $county_name = $county_result->fetch_assoc()['county_name'];
 $assessment_id = isset($_GET['assessment_id']) ? (int)$_GET['assessment_id'] : 0;
 $existing_scores = [];
 
+// -- Load existing RAW scores (sub-indicator level) for pre-filling form ------
+// key: "section_indicator_subcode" e.g. "leadership_T1_T1.1"
+$existing_raw = [];       // [composite_key => ['cdoh'=>x,'ip'=>x,'comments'=>x]]
+$submitted_sections = []; // [section_key => ['submitted_at'=>..., 'sub_count'=>..., 'avg_cdoh'=>...]]
+
+// If no assessment_id in URL, look up by county+period (draft or submitted)
+if (!$assessment_id) {
+    $chk = mysqli_fetch_assoc(mysqli_query($conn,
+        "SELECT assessment_id FROM transition_assessments
+         WHERE county_id=$county_id AND assessment_period='$period'
+         ORDER BY assessment_date DESC LIMIT 1"));
+    if ($chk) $assessment_id = (int)$chk['assessment_id'];
+}
+
 if ($assessment_id) {
-    // Load existing scores
-    $scores_query = "
-        SELECT ts.indicator_id, ts.cdoh_score, ts.ip_score, ts.comments
-        FROM transition_scores ts
-        WHERE ts.assessment_id = $assessment_id
-    ";
-    $scores_result = mysqli_query($conn, $scores_query);
-    while ($row = mysqli_fetch_assoc($scores_result)) {
-        $existing_scores[$row['indicator_id']] = $row;
+    // Load raw scores
+    $rr = mysqli_query($conn,
+        "SELECT composite_key, cdoh_score, ip_score, comments
+         FROM transition_raw_scores WHERE assessment_id = $assessment_id");
+    if ($rr) while ($row = mysqli_fetch_assoc($rr)) {
+        $existing_raw[$row['composite_key']] = $row;
+    }
+    // Load section submission log
+    $sr = mysqli_query($conn,
+        "SELECT section_key, submitted_at, sub_count, avg_cdoh, avg_ip
+         FROM transition_section_submissions WHERE assessment_id = $assessment_id");
+    if ($sr) while ($row = mysqli_fetch_assoc($sr)) {
+        $submitted_sections[$row['section_key']] = $row;
     }
 }
 
@@ -49,12 +67,26 @@ $scoring_criteria = [
     0 => ['label' => 'Inadequate structures/functions', 'class' => 'level-0']
 ];
 
+// Create a mapping of indicator codes to database indicator_ids
+$indicator_by_code = [];
+$indicator_query = "
+    SELECT i.indicator_id, i.indicator_code
+    FROM transition_indicators i
+";
+$result = mysqli_query($conn, $indicator_query);
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $indicator_by_code[$row['indicator_code']] = $row['indicator_id'];
+    }
+}
+
 // Define all sections with their detailed indicators
 $all_sections = [
     'leadership' => [
         'title' => 'COUNTY LEVEL LEADERSHIP AND GOVERNANCE',
         'icon' => 'fa-landmark',
         'color' => '#0D1A63',
+        'has_ip' => false, // T1, T2, T3 are CDOH only
         'indicators' => [
             'T1' => [
                 'code' => 'T1',
@@ -113,6 +145,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL ROUTINE SUPERVISION AND MENTORSHIP',
         'icon' => 'fa-clipboard-check',
         'color' => '#1a3a9e',
+        'has_ip' => true,
         'indicators' => [
             'T4A' => [
                 'code' => 'T4A',
@@ -156,6 +189,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL HIV/TB PROGRAM SPECIAL INITIATIVES (RRI, Leap, Surge, SIMS)',
         'icon' => 'fa-bolt',
         'color' => '#2a4ab0',
+        'has_ip' => true,
         'indicators' => [
             'T5A' => [
                 'code' => 'T5A',
@@ -191,6 +225,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL QUALITY IMPROVEMENT',
         'icon' => 'fa-chart-line',
         'color' => '#3a5ac8',
+        'has_ip' => true,
         'indicators' => [
             'T6A' => [
                 'code' => 'T6A',
@@ -224,6 +259,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL HIV/TB PATIENT IDENTIFICATION AND LINKAGE TO TREATMENT',
         'icon' => 'fa-user-plus',
         'color' => '#4a6ae0',
+        'has_ip' => true,
         'indicators' => [
             'T7A' => [
                 'code' => 'T7A',
@@ -265,6 +301,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL PATIENT RETENTION, ADHERENCE AND VIRAL SUPPRESSION SERVICES',
         'icon' => 'fa-heartbeat',
         'color' => '#5a7af8',
+        'has_ip' => true,
         'indicators' => [
             'T8A' => [
                 'code' => 'T8A',
@@ -312,6 +349,7 @@ $all_sections = [
         'title' => 'COUNTY LEVEL HIV PREVENTION AND KEY POPULATION SERVICES',
         'icon' => 'fa-shield-alt',
         'color' => '#6a8aff',
+        'has_ip' => true,
         'indicators' => [
             'T9A' => [
                 'code' => 'T9A',
@@ -345,13 +383,545 @@ $all_sections = [
             ]
         ]
     ],
-    // Add all other sections following the same pattern...
+    'finance' => [
+        'title' => 'COUNTY LEVEL FINANCE MANAGEMENT',
+        'icon' => 'fa-coins',
+        'color' => '#7a9aff',
+        'has_ip' => true,
+        'indicators' => [
+            'T10A' => [
+                'code' => 'T10A',
+                'name' => 'Transition of Financial Management: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T10A.1' => 'Preparing an annual county budget which integrates HIV care & treatment',
+                    'T10A.2' => 'Allocating available program resources',
+                    'T10A.3' => 'Tracking program expenditures and income',
+                    'T10A.4' => 'Producing financial reports',
+                    'T10A.5' => 'Reallocating funding to respond to budget variances and program needs',
+                    'T10A.6' => 'Conducts external audit',
+                    'T10A.7' => 'Responding to audits/reviews',
+                    'T10A.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
+                    'T10A.9' => 'Reducing the HIV/TB response funding as a result of the county?s domestic resource mobilization (HIV/TB funding for the last FY)'
+                ]
+            ],
+            'T10B' => [
+                'code' => 'T10B',
+                'name' => 'Transition of Financial Management: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T10B.1' => 'Preparing an annual county budget which integrates HIV care & treatment',
+                    'T10B.2' => 'Allocating available program resources',
+                    'T10B.3' => 'Tracking program expenditures and income',
+                    'T10B.4' => 'Producing financial reports',
+                    'T10B.5' => 'Reallocating funding to respond to budget variances and program needs',
+                    'T10B.6' => 'Conducts external audit',
+                    'T10B.7' => 'Responding to audits/reviews',
+                    'T10B.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
+                    'T10B.9' => 'Reducing the HIV/TB response funding as a result of the county?s domestic resource mobilization (HIV/TB funding for the last FY)'
+                ]
+            ]
+        ]
+    ],
+    'sub_grants' => [
+        'title' => 'COUNTY LEVEL MANAGING SUB-GRANTS OR OTHER GRANTS/COOPERATIVE AGREEMENTS',
+        'icon' => 'fa-file-invoice',
+        'color' => '#8a5cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T11A' => [
+                'code' => 'T11A',
+                'name' => 'Transition of Managing Sub-Grants: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T11A.1' => 'Defining the TOR for last/renewed sub-grant',
+                    'T11A.2' => 'Planning and developing the budget',
+                    'T11A.3' => 'Managing the competitive bidding process for procurements/purchases',
+                    'T11A.4' => 'Tracking sub-grant expenditures',
+                    'T11A.5' => 'Disbursing funds for procurements/purchases',
+                    'T11A.6' => 'Reporting results'
+                ]
+            ],
+            'T11B' => [
+                'code' => 'T11B',
+                'name' => 'Transition of Managing Sub-Grants: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T11B.1' => 'Defining the TOR for last/renewed sub-grant',
+                    'T11B.2' => 'Planning and developing the budget',
+                    'T11B.3' => 'Managing the competitive bidding process for procurements/purchases',
+                    'T11B.4' => 'Tracking sub-grant expenditures',
+                    'T11B.5' => 'Disbursing funds for procurements/purchases',
+                    'T11B.6' => 'Reporting results'
+                ]
+            ]
+        ]
+    ],
+    'commodities' => [
+        'title' => 'COUNTY LEVEL COMMODITIES MANAGEMENT',
+        'icon' => 'fa-boxes',
+        'color' => '#9b6cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T12A' => [
+                'code' => 'T12A',
+                'name' => 'Transition of Commodities Management: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T12A.1' => 'Developing/adapting commodity supply chain SOPs',
+                    'T12A.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
+                    'T12A.3' => 'Monthly commodities reporting',
+                    'T12A.4' => 'Building capacity/training of HF pharmacy and laboratory staff in commodity management',
+                    'T12A.5' => 'Managing commodity storage spaces within the facilities',
+                    'T12A.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
+                    'T12A.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
+                ]
+            ],
+            'T12B' => [
+                'code' => 'T12B',
+                'name' => 'Transition of Commodities Management: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T12B.1' => 'Developing/adapting commodity supply chain SOPs',
+                    'T12B.2' => 'Monitoring consumption of ARVs, anti-TB drugs, Cotrimoxazole, HIV test kits, phlebotomy supplies, cryovials for HIV VL, DBS bundles, GeneXpert catrigdes, sputum mugs (other specific laboratory commodities?)',
+                    'T12B.3' => 'Monthly commodities reporting',
+                    'T12B.4' => 'Building capacity/training of HF pharmacy and laboratory staff in commodity management',
+                    'T12B.5' => 'Managing commodity storage spaces within the facilities',
+                    'T12B.6' => 'Submitting stock orders to National level supply chain organization e.g. NASCOP, KEMSA, etc',
+                    'T12B.7' => 'Distributing supplies to testing sites, treatment facilities and labs'
+                ]
+            ]
+        ]
+    ],
+    'equipment' => [
+        'title' => 'COUNTY LEVEL EQUIPMENT PROCUREMENT AND USE',
+        'icon' => 'fa-tools',
+        'color' => '#ac7cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T13A' => [
+                'code' => 'T13A',
+                'name' => 'Transition of Equipment Procurement and Use: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T13A.1' => 'Determining the need for key HIV/TB specific equipment (Fridges, freezers, centrifuges, Biosafety cabinets, CD4 machines, Gene Xpert machines, etc.)',
+                    'T13A.2' => 'Establishing equipment quantification and need based Prioritization of equipment',
+                    'T13A.3' => 'Development of specifications, ordering/procuring equipments',
+                    'T13A.4' => 'Funding equipment procurement',
+                    'T13A.5' => 'Maintaining and calibrating/certifying equipments',
+                    'T13A.6' => 'Equipment inventory, supervising and training use of equipments'
+                ]
+            ],
+            'T13B' => [
+                'code' => 'T13B',
+                'name' => 'Transition of Procurement and Use: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T13B.1' => 'Determining the need for key HIV/TB specific equipment (Fridges, freezers, centrifuges, Biosafety cabinets, CD4 machines, Gene Xpert machines, etc.)',
+                    'T13B.2' => 'Establishing equipment quantification and need based Prioritization of equipment',
+                    'T13B.3' => 'Development of specifications, ordering/procuring equipments',
+                    'T13B.4' => 'Funding equipment procurement',
+                    'T13B.5' => 'Maintaining and calibrating/certifying equipments',
+                    'T13B.6' => 'Equipment inventory, supervising and training use of equipments'
+                ]
+            ]
+        ]
+    ],
+    'laboratory' => [
+        'title' => 'COUNTY LEVEL LABORATORY SERVICES',
+        'icon' => 'fa-flask',
+        'color' => '#bd8cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T14A' => [
+                'code' => 'T14A',
+                'name' => 'Transition of Laboratory Services: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T14A.1' => 'Distributing QC proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14A.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14A.3' => 'Compiling and reporting on proficiency testing results',
+                    'T14A.4' => 'Conducting supervision/CAPA visits to laboratories',
+                    'T14A.5' => 'Training laboratory and HTS staff on good practices',
+                    'T14A.6' => 'Ordering laboratory reagents',
+                    'T14A.7' => 'Ordering laboratory consumables',
+                    'T14A.8' => 'Funding and Managing specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14A.9' => 'Monitoring TAT for test results (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14A.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
+                    'T14A.11' => 'Supporting biosafety activities and health care waste management',
+                    'T14A.12' => 'Supporting service and maintenance contracts for laboratory equipment'
+                ]
+            ],
+            'T14B' => [
+                'code' => 'T14B',
+                'name' => 'Transition of Laboratory Services: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T14B.1' => 'Distributing QC proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14B.2' => 'Re-Distributing EQA proficiency testing panels and proficiency testing kits (GeneXpert and RHT)',
+                    'T14B.3' => 'Compiling and reporting on proficiency testing results',
+                    'T14B.4' => 'Conducting supervision/CAPA visits to laboratories',
+                    'T14B.5' => 'Training laboratory and HTS staff on good practices',
+                    'T14B.6' => 'Ordering laboratory reagents',
+                    'T14B.7' => 'Ordering laboratory consumables',
+                    'T14B.8' => 'Funding and Managing specimen transport systems (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14B.9' => 'Monitoring TAT for test results (CD4, EID, VL, Gene Xpert, DST)',
+                    'T14B.10' => 'Implementing laboratory quality management systems (QMS) for HIV/TB',
+                    'T14B.11' => 'Supporting biosafety activities and health care waste management',
+                    'T14B.12' => 'Supporting service and maintenance contracts for laboratory equipment'
+                ]
+            ]
+        ]
+    ],
+    'inventory' => [
+        'title' => 'COUNTY LEVEL INVENTORY MANAGEMENT',
+        'icon' => 'fa-clipboard-list',
+        'color' => '#ce9cf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T15A' => [
+                'code' => 'T15A',
+                'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T15A.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
+                    'T15A.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process ? (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15A.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes ? (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15A.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP?s General Ledger ? (verify annual Assets Inventory Audit Report)',
+                    'T15A.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
+                    'T15A.6' => 'Oversight Supervision of the Inventory Management functions'
+                ]
+            ],
+            'T15B' => [
+                'code' => 'T15B',
+                'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T15B.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
+                    'T15B.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process ? (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15B.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes ? (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15B.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP?s General Ledger ? (verify annual Assets Inventory Audit Report)',
+                    'T15B.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
+                    'T15B.6' => 'Oversight Supervision of the Inventory Management functions'
+                ]
+            ]
+        ]
+    ],
+    'training' => [
+        'title' => 'COUNTY LEVEL IN-SERVICE TRAINING',
+        'icon' => 'fa-chalkboard-teacher',
+        'color' => '#dfacf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T16A' => [
+                'code' => 'T16A',
+                'name' => 'Transition of In-service Training: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T16A.1' => 'Assessing staff training needs',
+                    'T16A.2' => 'Selecting/adapting curricula',
+                    'T16A.3' => 'Planning training schedule',
+                    'T16A.4' => 'Arranging/funding/providing training venue',
+                    'T16A.5' => 'Providing or paying trainers/facilitators',
+                    'T16A.6' => 'Paying participant per diem',
+                    'T16A.7' => 'Use of integrated human resource information system (iHRIS Train)'
+                ]
+            ],
+            'T16B' => [
+                'code' => 'T16B',
+                'name' => 'Transition of In-service Training: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T16B.1' => 'Assessing staff training needs',
+                    'T16B.2' => 'Selecting/adapting curricula',
+                    'T16B.3' => 'Planning training schedule',
+                    'T16B.4' => 'Arranging/funding/providing training venue',
+                    'T16B.5' => 'Providing or paying trainers/facilitators',
+                    'T16B.6' => 'Paying participant per diem',
+                    'T16B.7' => 'Use of integrated human resource information system (iHRIS Train)'
+                ]
+            ]
+        ]
+    ],
+    'hr_management' => [
+        'title' => 'COUNTY LEVEL HUMAN RESOURCE MANAGEMENT',
+        'icon' => 'fa-users',
+        'color' => '#f0bcf6',
+        'has_ip' => true,
+        'indicators' => [
+            'T17A' => [
+                'code' => 'T17A',
+                'name' => 'Transition of HIV/TB Human Resource Management: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T17A.1' => 'Presence of active of county public service board that recruits HIV/TB services staff (check: Gazette notice, minutes of meeting proceedings)',
+                    'T17A.2' => 'Determining staffing needs for the HIV/TB program',
+                    'T17A.3' => 'Advertising/posting positions for the HIV/TB program',
+                    'T17A.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
+                    'T17A.5' => 'Performance appraisal for the HIV/TB program',
+                    'T17A.6' => 'Paying staff salaries for the HIV/TB program',
+                    'T17A.7' => 'Appointing HIV/TB program staff (recruitment)',
+                    'T17A.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
+                    'T17A.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
+                    'T17A.10' => 'Use of integrated human resource information system (iHRS) (government HRH management and development)'
+                ]
+            ],
+            'T17B' => [
+                'code' => 'T17B',
+                'name' => 'Transition of HIV/TB Human Resource Management: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T17B.1' => 'Presence of active of county public service board that recruits HIV/TB services staff (check: Gazette notice, minutes of meeting proceedings)',
+                    'T17B.2' => 'Determining staffing needs for the HIV/TB program',
+                    'T17B.3' => 'Advertising/posting positions for the HIV/TB program',
+                    'T17B.4' => 'Shortlisting/interviewing candidates for the HIV/TB program',
+                    'T17B.5' => 'Performance appraisal for the HIV/TB program',
+                    'T17B.6' => 'Paying staff salaries for the HIV/TB program',
+                    'T17B.7' => 'Appointing HIV/TB program staff (recruitment)',
+                    'T17B.8' => 'Absorbing previously IP recruited staff through the county public service board (transitioned staff)',
+                    'T17B.9' => 'Supporting facilities to effectively utilize the few available staff to execute health facility roles e.g. development of task shifting plans at health facilities',
+                    'T17B.10' => 'Use of integrated human resource information system (iHRS) (government HRH management and development)'
+                ]
+            ]
+        ]
+    ],
+    'data_management' => [
+        'title' => 'COUNTY LEVEL HIV/TB PROGRAM DATA MANAGEMENT',
+        'icon' => 'fa-database',
+        'color' => '#0ABFBC',
+        'has_ip' => true,
+        'indicators' => [
+            'T18A' => [
+                'code' => 'T18A',
+                'name' => 'Transition of HIV/TB Program Data Management: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T18A.1' => 'Collecting and entering data from facilities in to DHIS2',
+                    'T18A.2' => 'Collecting and entering data from facilities in to DATIM',
+                    'T18A.3' => 'Checking completeness and accuracy',
+                    'T18A.4' => 'Conduct DQA on regular basis',
+                    'T18A.5' => 'Giving feedback and support to facilities for data quality',
+                    'T18A.6' => 'Analyzing data and producing reports sent to MOH',
+                    'T18A.7' => 'Monitoring results and determining remedial actions',
+                    'T18A.8' => 'Managing IT infrastructure for HIV/TB data management',
+                    'T18A.9' => 'Training & mentorship of health facility staff in data management'
+                ]
+            ],
+            'T18B' => [
+                'code' => 'T18B',
+                'name' => 'Transition of HIV/TB Program Data Management: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T18B.1' => 'Collecting and entering data from facilities in to DHIS2',
+                    'T18B.2' => 'Collecting and entering data from facilities in to DATIM',
+                    'T18B.3' => 'Checking completeness and accuracy',
+                    'T18B.4' => 'Conduct DQA on regular basis',
+                    'T18B.5' => 'Giving feedback and support to facilities for data quality',
+                    'T18B.6' => 'Analyzing data and producing reports sent to MOH',
+                    'T18B.7' => 'Monitoring results and determining remedial actions',
+                    'T18B.8' => 'Managing IT infrastructure for HIV/TB data management',
+                    'T18B.9' => 'Training & mentorship of health facility staff in data management'
+                ]
+            ]
+        ]
+    ],
+    'patient_monitoring' => [
+        'title' => 'COUNTY LEVEL PATIENT MONITORING SYSTEM',
+        'icon' => 'fa-chart-pie',
+        'color' => '#27AE60',
+        'has_ip' => true,
+        'indicators' => [
+            'T19A' => [
+                'code' => 'T19A',
+                'name' => 'Transition of Patient Monitoring System: Level of Involvement of the IP',
+                'sub_indicators' => [
+                    'T19A.1' => 'Providing patient monitoring system/tools',
+                    'T19A.2' => 'Entering patient data into the system/tools',
+                    'T19A.3' => 'Checking completeness and accuracy',
+                    'T19A.4' => 'Analyzing data and producing reports',
+                    'T19A.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
+                    'T19A.6' => 'Managing Electronic Medical Record systems for patient monitoring',
+                    'T19A.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
+                ]
+            ],
+            'T19B' => [
+                'code' => 'T19B',
+                'name' => 'Transition of Patient Monitoring System: Level of Autonomy of the CDOH',
+                'sub_indicators' => [
+                    'T19B.1' => 'Providing patient monitoring system/tools',
+                    'T19B.2' => 'Entering patient data into the system/tools',
+                    'T19B.3' => 'Checking completeness and accuracy',
+                    'T19B.4' => 'Analyzing data and producing reports',
+                    'T19B.5' => 'Tracking overall county lost-to-follow up, transfer, death & retention rates',
+                    'T19B.6' => 'Managing Electronic Medical Record systems for patient monitoring',
+                    'T19B.7' => 'Training Health facility staff in monitoring, evaluation & reporting (at least 2 of the three)'
+                ]
+            ]
+        ]
+    ],
+    'institution_ownership' => [
+        'title' => 'COUNTY LEVEL INSTITUTIONAL OWNERSHIP INDICATOR',
+        'icon' => 'fa-building',
+        'color' => '#F5A623',
+        'has_ip' => false, // IO indicators are CDOH only
+        'indicators' => [
+            'IO1' => [
+                'code' => 'IO1',
+                'name' => 'Operationalization of national HIV/TB plan at institutional level',
+                'sub_indicators' => [
+                    'IO1.1' => 'Does the county routinely develop HIV/TB AWPs that are based on the CIDP?',
+                    'IO1.2' => 'Has the county costed its HIV/TB AWP and integrated it with the last national budget request?',
+                    'IO1.3' => 'Are different levels of HIV/TB treatment staff involved in the development of the HIV/TB AWP?',
+                    'IO1.4' => 'Are stakeholders from HIV/TB programs and PLHIV/TB involved in the development of HIV/TB AWPs?',
+                    'IO1.5' => 'Is the implementation of the county HIV/TB work plan monitored and tracked by the County health team?'
+                ]
+            ],
+            'IO2' => [
+                'code' => 'IO2',
+                'name' => 'Institutional coordination of HIV/TB prevention, care and treatment activities',
+                'sub_indicators' => [
+                    'IO2.1' => 'Does the CDOH have a list of all active HIV/TB services CSOs and implementing partners in the county with contact information?',
+                    'IO2.2' => 'Does the county provide a functional forum for experience exchange on at least a quarterly basis?',
+                    'IO2.3' => 'Does the county disseminate information, standards and best practices to implementers and stakeholders in a timely manner?',
+                    'IO2.4' => 'Does the county work to ensure a rational geographic distribution, program coverage and scale-up of HIV/TB services?'
+                ]
+            ],
+            'IO3' => [
+                'code' => 'IO3',
+                'name' => 'Congruence of expectations between levels of the health system',
+                'sub_indicators' => [
+                    'IO3.1' => 'Is the county strategic plan aligned to the National HIV/TB framework developed by NACC?',
+                    'IO3.2' => 'Does the county team perceive the national framework for HIV/TB care and treatment programs is relevant to their county needs?',
+                    'IO3.3' => 'Is the policy formulation and capacity building functions of NACC/NASCOP to the county helpful in resolving implementation challenges?',
+                    'IO3.4' => 'Is the county team aware of its HIV/TB program service targets? If yes, are they using this data to inform annual HIV/TB plans?',
+                    'IO3.5' => 'Does the county team perceive that the HIV service targets/objectives expected of their county are realistic?',
+                    'IO3.6' => 'Is the financial grant from the national level adequate to meet the HIV/TB service targets expected of the county team?'
+                ]
+            ]
+        ]
+    ]
 ];
 
 // Filter sections based on selection
 $active_sections = array_intersect_key($all_sections, array_flip($sections));
 
-// Handle form submission
+// -- Handle SECTION save (AJAX per-section) ------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_section'])) {
+    $section_key     = mysqli_real_escape_string($conn, $_POST['section_key'] ?? '');
+    $assessed_by     = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
+    $assessment_date = mysqli_real_escape_string($conn, $_POST['assessment_date'] ?? date('Y-m-d'));
+
+    mysqli_begin_transaction($conn);
+    try {
+        // Create or reuse assessment record
+        if (!$assessment_id) {
+            $ex = mysqli_fetch_assoc(mysqli_query($conn,
+                "SELECT assessment_id FROM transition_assessments
+                 WHERE county_id=$county_id AND assessment_period='$period' LIMIT 1"));
+            if ($ex) {
+                $assessment_id = (int)$ex['assessment_id'];
+            } else {
+                mysqli_query($conn,
+                    "INSERT INTO transition_assessments
+                     (county_id, assessment_period, assessment_date, assessed_by, assessment_status)
+                     VALUES ($county_id,'$period','$assessment_date','$assessed_by','draft')");
+                $assessment_id = (int)mysqli_insert_id($conn);
+            }
+        }
+
+        // Delete existing raw scores for this section only
+        mysqli_query($conn,
+            "DELETE FROM transition_raw_scores
+             WHERE assessment_id=$assessment_id AND section_key='$section_key'");
+
+        $saved = 0;
+        $sum_cdoh = 0; $cnt_cdoh = 0;
+        $sum_ip   = 0; $cnt_ip   = 0;
+
+        // Scores arrive as scores[section_indicator_subcode][cdoh/ip/comments]
+        if (!empty($_POST['scores'])) {
+            foreach ($_POST['scores'] as $composite_key => $vals) {
+                $ck_safe  = mysqli_real_escape_string($conn, $composite_key);
+                // Parse composite key e.g. "leadership_T1_T1.1"
+                $parts    = explode('_', $composite_key);
+                $sub_code = end($parts);                          // T1.1
+                $sub_safe = mysqli_real_escape_string($conn, $sub_code);
+                $ind_code = preg_replace('/\.\d+$/', '', $sub_code); // T1
+                $ind_safe = mysqli_real_escape_string($conn, $ind_code);
+
+                $cdoh  = isset($vals['cdoh']) && $vals['cdoh'] !== '' ? (int)$vals['cdoh'] : 'NULL';
+                $ip    = isset($vals['ip'])   && $vals['ip']   !== '' ? (int)$vals['ip']   : 'NULL';
+                $comm  = mysqli_real_escape_string($conn, $vals['comments'] ?? '');
+
+                if ($cdoh === 'NULL' && $ip === 'NULL') continue;
+
+                mysqli_query($conn,
+                    "INSERT INTO transition_raw_scores
+                     (assessment_id, section_key, indicator_code, sub_indicator_code,
+                      composite_key, cdoh_score, ip_score, comments, scored_by)
+                     VALUES ($assessment_id,'$section_key','$ind_safe','$sub_safe',
+                             '$ck_safe',$cdoh,$ip,'$comm','$assessed_by')
+                     ON DUPLICATE KEY UPDATE
+                       cdoh_score=VALUES(cdoh_score), ip_score=VALUES(ip_score),
+                       comments=VALUES(comments), scored_at=NOW()");
+                $saved++;
+                if ($cdoh !== 'NULL') { $sum_cdoh += $cdoh; $cnt_cdoh++; }
+                if ($ip   !== 'NULL') { $sum_ip   += $ip;   $cnt_ip++;   }
+            }
+        }
+
+        $avg_c_val = $cnt_cdoh > 0 ? round($sum_cdoh/$cnt_cdoh, 2) : 'NULL';
+        $avg_i_val = $cnt_ip   > 0 ? round($sum_ip/$cnt_ip,     2) : 'NULL';
+
+        // Upsert section submission record
+        mysqli_query($conn,
+            "INSERT INTO transition_section_submissions
+             (assessment_id, section_key, submitted_by, sub_count, avg_cdoh, avg_ip)
+             VALUES ($assessment_id,'$section_key','$assessed_by',$saved,$avg_c_val,$avg_i_val)
+             ON DUPLICATE KEY UPDATE
+               submitted_by='$assessed_by', submitted_at=NOW(),
+               sub_count=$saved, avg_cdoh=$avg_c_val, avg_ip=$avg_i_val");
+
+        // Also sync aggregate transition_scores (one row per indicator_id) for backward-compat
+        $indicator_by_code_local = [];
+        $ir = mysqli_query($conn, "SELECT indicator_id, indicator_code FROM transition_indicators");
+        if ($ir) while ($row = mysqli_fetch_assoc($ir))
+            $indicator_by_code_local[$row['indicator_code']] = $row['indicator_id'];
+
+        $ind_agg = mysqli_query($conn,
+            "SELECT indicator_code,
+                    AVG(cdoh_score) avg_c, AVG(ip_score) avg_i
+             FROM transition_raw_scores
+             WHERE assessment_id=$assessment_id AND section_key='$section_key'
+             GROUP BY indicator_code");
+        if ($ind_agg) while ($row = mysqli_fetch_assoc($ind_agg)) {
+            $iid = $indicator_by_code_local[$row['indicator_code']] ?? 0;
+            if (!$iid) continue;
+            $ac = $row['avg_c'] !== null ? round((float)$row['avg_c']) : 'NULL';
+            $ai = $row['avg_i'] !== null ? round((float)$row['avg_i']) : 'NULL';
+            mysqli_query($conn,
+                "INSERT INTO transition_scores (assessment_id, indicator_id, cdoh_score, ip_score)
+                 VALUES ($assessment_id,$iid,$ac,$ai)
+                 ON DUPLICATE KEY UPDATE cdoh_score=$ac, ip_score=$ai");
+        }
+
+        // Recompute overall scores
+        $ov = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT AVG(cdoh_score) oc, AVG(ip_score) oi
+             FROM transition_raw_scores WHERE assessment_id=$assessment_id"));
+        $oc = $ov['oc'] !== null ? round((float)$ov['oc']/4*100) : 0;
+        $oi = $ov['oi'] !== null ? round((float)$ov['oi']/4*100) : 0;
+        $rd = $oc>=70?'Transition':($oc>=50?'Support and Monitor':'Not Ready');
+        mysqli_query($conn,
+            "UPDATE transition_assessments SET
+             overall_cdoh_score=$oc, overall_ip_score=$oi,
+             overall_gap_score=GREATEST(0,$oi-$oc), overall_overlap_score=LEAST($oc,$oi),
+             readiness_level='$rd', assessment_status='draft'
+             WHERE assessment_id=$assessment_id");
+
+        mysqli_commit($conn);
+
+        echo json_encode([
+            'success'        => true,
+            'assessment_id'  => $assessment_id,
+            'section_key'    => $section_key,
+            'saved'          => $saved,
+            'submitted_at'   => date('d M Y H:i'),
+            'avg_cdoh_pct'   => $avg_c_val !== 'NULL' ? round((float)$avg_c_val/4*100) : 0,
+            'avg_ip_pct'     => $avg_i_val !== 'NULL' ? round((float)$avg_i_val/4*100) : 0,
+        ]);
+        exit();
+
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+        exit();
+    }
+}
+
+// -- Handle full SUBMIT ALL (final) --------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     $assessed_by = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
     $assessment_date = mysqli_real_escape_string($conn, $_POST['assessment_date'] ?? date('Y-m-d'));
@@ -362,75 +932,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     try {
         // Create new assessment or update existing
         if ($assessment_id) {
-            // Update existing assessment
             $update_query = "UPDATE transition_assessments SET
                 assessment_date = '$assessment_date',
                 assessed_by = '$assessed_by',
                 assessment_status = 'submitted'
                 WHERE assessment_id = $assessment_id";
-            mysqli_query($conn, $update_query);
-
-            // Delete existing scores
-            mysqli_query($conn, "DELETE FROM transition_scores WHERE assessment_id = $assessment_id");
+            if (!mysqli_query($conn, $update_query)) {
+                throw new Exception("Error updating assessment: " . mysqli_error($conn));
+            }
+            // Delete existing scores (aggregate) — raw scores kept
+            if (!mysqli_query($conn, "DELETE FROM transition_scores WHERE assessment_id = $assessment_id")) {
+                throw new Exception("Error deleting existing scores: " . mysqli_error($conn));
+            }
         } else {
-            // Insert new assessment
             $insert_query = "INSERT INTO transition_assessments
                 (county_id, assessment_period, assessment_date, assessed_by, assessment_status)
                 VALUES ($county_id, '$period', '$assessment_date', '$assessed_by', 'submitted')";
-            mysqli_query($conn, $insert_query);
+            if (!mysqli_query($conn, $insert_query)) {
+                throw new Exception("Error creating assessment: " . mysqli_error($conn));
+            }
             $assessment_id = mysqli_insert_id($conn);
         }
 
-        // Save scores for each indicator
+        // Save raw + aggregate scores from POST
         $total_cdoh = 0;
         $total_ip = 0;
         $indicator_count = 0;
 
-        foreach ($_POST['scores'] as $indicator_key => $scores) {
-            list($section_key, $indicator_code, $sub_indicator) = explode('_', $indicator_key);
+        // Rebuild indicator_by_code
+        $indicator_by_code = [];
+        $ir2 = mysqli_query($conn, "SELECT indicator_id, indicator_code FROM transition_indicators");
+        if ($ir2) while ($row = mysqli_fetch_assoc($ir2))
+            $indicator_by_code[$row['indicator_code']] = $row['indicator_id'];
 
-            $cdoh_score = isset($scores['cdoh']) ? (int)$scores['cdoh'] : 0;
-            $ip_score = isset($scores['ip']) ? (int)$scores['ip'] : 0;
-            $comments = mysqli_real_escape_string($conn, $scores['comments'] ?? '');
+        foreach ($_POST['scores'] as $composite_key => $scores) {
+            $parts          = explode('_', $composite_key);
+            $sub_code       = end($parts);
+            $ind_code       = preg_replace('/\.\d+$/', '', $sub_code);
+            $section_key_p  = $parts[0] ?? '';
 
-            // Get indicator_id from database (you'll need to create this mapping)
-            // For now, we'll use a placeholder. In production, you should look up the actual indicator_id
-            $indicator_id = 1; // Placeholder
+            $indicator_id = $indicator_by_code[$sub_code]
+                ?? $indicator_by_code[$ind_code]
+                ?? 0;
 
+            if (!$indicator_id) {
+                $fr = mysqli_query($conn,
+                    "SELECT indicator_id FROM transition_indicators
+                     WHERE indicator_code='".mysqli_real_escape_string($conn,$sub_code)."' LIMIT 1");
+                if ($fr && mysqli_num_rows($fr) > 0)
+                    $indicator_id = mysqli_fetch_assoc($fr)['indicator_id'];
+                else { error_log("Cannot find indicator: $sub_code"); continue; }
+            }
+
+            $cdoh_score = isset($scores['cdoh']) && $scores['cdoh'] !== '' ? (int)$scores['cdoh'] : null;
+            $ip_score   = isset($scores['ip'])   && $scores['ip']   !== '' ? (int)$scores['ip']   : null;
+            $comments   = mysqli_real_escape_string($conn, $scores['comments'] ?? '');
+
+            if ($cdoh_score === null && $ip_score === null) continue;
+
+            // Save raw score
+            $ck_safe  = mysqli_real_escape_string($conn, $composite_key);
+            $sub_safe = mysqli_real_escape_string($conn, $sub_code);
+            $ind_safe = mysqli_real_escape_string($conn, $ind_code);
+            $sk_safe  = mysqli_real_escape_string($conn, $section_key_p);
+            $cdoh_sql = $cdoh_score !== null ? $cdoh_score : 'NULL';
+            $ip_sql   = $ip_score   !== null ? $ip_score   : 'NULL';
+            $by_safe  = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
+            mysqli_query($conn,
+                "INSERT INTO transition_raw_scores
+                 (assessment_id, section_key, indicator_code, sub_indicator_code,
+                  composite_key, cdoh_score, ip_score, comments, scored_by)
+                 VALUES ($assessment_id,'$sk_safe','$ind_safe','$sub_safe',
+                         '$ck_safe',$cdoh_sql,$ip_sql,'$comments','$by_safe')
+                 ON DUPLICATE KEY UPDATE
+                   cdoh_score=VALUES(cdoh_score),ip_score=VALUES(ip_score),
+                   comments=VALUES(comments),scored_at=NOW()");
+
+            // Save aggregate score
             $score_query = "INSERT INTO transition_scores
                 (assessment_id, indicator_id, cdoh_score, ip_score, comments)
-                VALUES ($assessment_id, $indicator_id, $cdoh_score, $ip_score, '$comments')";
-            mysqli_query($conn, $score_query);
+                VALUES ($assessment_id, $indicator_id, $cdoh_sql, $ip_sql, '$comments')";
+            if (!mysqli_query($conn, $score_query)) {
+                throw new Exception("Error saving score for $sub_code: " . mysqli_error($conn));
+            }
 
-            $total_cdoh += $cdoh_score;
-            $total_ip += $ip_score;
+            if ($cdoh_score !== null) $total_cdoh += $cdoh_score;
+            if ($ip_score   !== null) $total_ip   += $ip_score;
             $indicator_count++;
         }
 
-        // Calculate overall scores and readiness level
         $avg_cdoh = $indicator_count > 0 ? round(($total_cdoh / ($indicator_count * 4)) * 100) : 0;
-        $avg_ip = $indicator_count > 0 ? round(($total_ip / ($indicator_count * 4)) * 100) : 0;
+        $avg_ip   = $indicator_count > 0 ? round(($total_ip   / ($indicator_count * 4)) * 100) : 0;
+        $readiness = $avg_cdoh >= 70 ? 'Transition' : ($avg_cdoh >= 50 ? 'Support and Monitor' : 'Not Ready');
 
-        if ($avg_cdoh >= 70) {
-            $readiness = 'Transition';
-        } elseif ($avg_cdoh >= 50) {
-            $readiness = 'Support and Monitor';
-        } else {
-            $readiness = 'Not Ready';
-        }
-
-        // Update assessment with overall scores
         $update_overall = "UPDATE transition_assessments SET
             overall_cdoh_score = $avg_cdoh,
             overall_ip_score = $avg_ip,
             overall_gap_score = GREATEST(0, $avg_ip - $avg_cdoh),
             overall_overlap_score = LEAST($avg_cdoh, $avg_ip),
-            readiness_level = '$readiness'
+            readiness_level = '$readiness',
+            assessment_status = 'submitted'
             WHERE assessment_id = $assessment_id";
-        mysqli_query($conn, $update_overall);
+        if (!mysqli_query($conn, $update_overall)) {
+            throw new Exception("Error updating overall scores: " . mysqli_error($conn));
+        }
 
         mysqli_commit($conn);
-
         $_SESSION['success_msg'] = 'Assessment saved successfully!';
         header('Location: transition_dashboard.php?county=' . $county_id);
         exit();
@@ -440,6 +1047,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
         $error = 'Error saving assessment: ' . $e->getMessage();
     }
 }
+
+// Calculate total indicators for progress tracking
+$total_indicators = 0;
+foreach ($active_sections as $section) {
+    foreach ($section['indicators'] as $indicator) {
+        $total_indicators += count($indicator['sub_indicators']);
+    }
+}
+
+// Build submitted sections data for JS
+$submitted_sections_json = json_encode($submitted_sections);
+$assessment_id_js = (int)$assessment_id;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -797,6 +1416,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
             border-radius: 10px;
             transition: width 0.3s;
         }
+
+        .ip-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .ip-badge.yes {
+            background: #FFC107;
+            color: #000;
+        }
+        .ip-badge.no {
+            background: #6c757d;
+            color: #fff;
+        }
+
+        /* -- Section save button -- */
+        .section-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e4f0;
+        }
+        .btn-save-section {
+            background: #0D1A63;
+            color: #fff;
+            border: none;
+            padding: 11px 26px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-save-section:hover { background: #1a3a9e; transform: translateY(-1px); }
+        .btn-save-section.saving { opacity: .65; cursor: wait; }
+
+        /* Submitted tag inside section header */
+        .submitted-tag {
+            background: rgba(39,174,96,.25);
+            border: 1px solid rgba(39,174,96,.4);
+            color: #d4edda;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* -- Already-submitted Modal -- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 34px 32px;
+            max-width: 460px;
+            width: 92%;
+            box-shadow: 0 24px 64px rgba(0,0,0,.22);
+            text-align: center;
+        }
+        .modal-icon { font-size: 52px; margin-bottom: 14px; }
+        .modal-box h3 { font-size: 20px; font-weight: 800; color: #0D1A63; margin-bottom: 10px; }
+        .modal-box p  { color: #555; font-size: 14px; line-height: 1.6; margin-bottom: 6px; }
+        .modal-info {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 14px 0;
+            font-size: 13px;
+            text-align: left;
+            line-height: 1.8;
+        }
+        .modal-info strong { color: #0D1A63; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+        .modal-btn {
+            padding: 11px 26px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+        }
+        .modal-btn-yes { background: #0D1A63; color: #fff; }
+        .modal-btn-yes:hover { background: #1a3a9e; }
+        .modal-btn-no  { background: #e0e4f0; color: #333; }
+        .modal-btn-no:hover { background: #d0d4e0; }
     </style>
 </head>
 <body>
@@ -826,7 +1547,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                 <p style="color: #666; font-size: 13px;">
                     <i class="fas fa-calendar"></i> Period: <?= htmlspecialchars($period) ?> |
                     <i class="fas fa-layer-group"></i> Sections: <?= count($active_sections) ?> |
-                    <i class="fas fa-tasks"></i> Total Indicators: <span id="totalIndicators">0</span>
+                    <i class="fas fa-tasks"></i> Total Indicators: <span id="totalIndicators"><?= $total_indicators ?></span>
                 </p>
             </div>
             <div class="progress-indicator">
@@ -844,7 +1565,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
             $index = 1;
             foreach ($active_sections as $key => $section):
             ?>
-            <div class="section-tab" data-section="<?= $key ?>" onclick="showSection('<?= $key ?>')">
+            <div class="section-tab" id="tab_<?= $key ?>" data-section="<?= $key ?>" onclick="handleTabClick('<?= $key ?>')">
                 <i class="fas <?= $section['icon'] ?? 'fa-file' ?>"></i> <?= $section['title'] ?>
             </div>
             <?php
@@ -856,32 +1577,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
         <!-- Assessment Forms Container -->
         <div id="formsContainer">
             <?php
-            $total_indicators = 0;
             foreach ($active_sections as $key => $section):
                 $section_total = 0;
+                foreach ($section['indicators'] as $indicator) {
+                    $section_total += count($indicator['sub_indicators']);
+                }
             ?>
-            <div class="assessment-form" id="form_<?= $key ?>" style="display: <?= $key === array_key_first($active_sections) ? 'block' : 'none' ?>;">
+            <div class="assessment-form" id="form_<?= $key ?>" style="display: <?= $key === array_key_first($active_sections) ? 'block' : 'none' ?>;"
+                 data-section="<?= $key ?>">
                 <div class="section-summary">
                     <div>
                         <i class="fas <?= $section['icon'] ?? 'fa-file' ?>"></i>
                         <strong><?= $section['title'] ?></strong>
+                        <?php if (!$section['has_ip']): ?>
+                        <span class="ip-badge no">CDOH Only</span>
+                        <?php else: ?>
+                        <span class="ip-badge yes">CDOH + IP</span>
+                        <?php endif; ?>
                     </div>
-                    <div class="summary-badge" id="section_progress_<?= $key ?>">0% Complete</div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <?php if (isset($submitted_sections[$key])): $ss = $submitted_sections[$key]; ?>
+                        <span class="submitted-tag" id="stag_<?= $key ?>">
+                            <i class="fas fa-check-circle"></i>
+                            Submitted <?= date('d M Y H:i', strtotime($ss['submitted_at'])) ?>
+                            &nbsp;·&nbsp; <?= $ss['sub_count'] ?> indicators
+                            <?php if ($ss['avg_cdoh'] !== null): ?>
+                            &nbsp;·&nbsp; CDOH: <?= round($ss['avg_cdoh']/4*100) ?>%
+                            <?php endif; ?>
+                        </span>
+                        <?php else: ?>
+                        <span class="submitted-tag" id="stag_<?= $key ?>" style="display:none"></span>
+                        <?php endif; ?>
+                        <div class="summary-badge" id="section_progress_<?= $key ?>">0% Complete</div>
+                    </div>
                 </div>
 
-                <?php foreach ($section['indicators'] as $indicator_code => $indicator):
-                    $sub_indicator_count = count($indicator['sub_indicators']);
-                    $section_total += $sub_indicator_count;
-                ?>
+                <?php foreach ($section['indicators'] as $indicator_code => $indicator): ?>
                 <div class="indicator-card" style="--color: <?= $section['color'] ?? '#0D1A63' ?>">
                     <div class="indicator-header">
                         <span class="indicator-code"><?= $indicator_code ?></span>
-                        <span style="font-size: 12px; color: #666;"><?= $sub_indicator_count ?> sub-indicators</span>
+                        <span style="font-size: 12px; color: #666;"><?= count($indicator['sub_indicators']) ?> sub-indicators</span>
                     </div>
                     <div class="indicator-title"><?= $indicator['name'] ?></div>
 
                     <?php foreach ($indicator['sub_indicators'] as $sub_code => $sub_text):
                         $indicator_key = $key . '_' . $indicator_code . '_' . $sub_code;
+                        $ex = $existing_raw[$indicator_key] ?? [];
                     ?>
                     <div class="sub-indicator">
                         <div class="sub-indicator-header">
@@ -890,7 +1631,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                         <div class="sub-indicator-text"><?= $sub_text ?></div>
 
                         <div class="score-grid">
-                            <!-- CDOH Score Column -->
+                            <!-- CDOH Score Column (always present) -->
                             <div class="score-column cdoh">
                                 <h4><i class="fas fa-building"></i> CDOH (County)</h4>
                                 <div class="radio-group">
@@ -901,7 +1642,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                                                value="<?= $score ?>"
                                                id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
                                                data-section="<?= $key ?>"
-                                               onchange="updateProgress()">
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['cdoh_score']) && (string)$ex['cdoh_score'] === (string)$score ? 'checked' : '' ?>>
                                         <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
                                             <span class="score"><?= $score ?></span>
                                             <span class="label"><?= $score == 4 ? 'Fully' : ($score == 3 ? 'Partial' : ($score == 2 ? 'Some' : ($score == 1 ? 'Minimal' : 'None'))) ?></span>
@@ -911,7 +1653,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                                 </div>
                             </div>
 
-                            <!-- IP Score Column -->
+                            <!-- IP Score Column (only if section has_ip is true) -->
+                            <?php if ($section['has_ip']): ?>
                             <div class="score-column ip">
                                 <h4><i class="fas fa-handshake"></i> Implementing Partner</h4>
                                 <div class="radio-group">
@@ -922,7 +1665,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                                                value="<?= $score ?>"
                                                id="ip_<?= $indicator_key ?>_<?= $score ?>"
                                                data-section="<?= $key ?>"
-                                               onchange="updateProgress()">
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['ip_score']) && $ex['ip_score'] !== null && (string)$ex['ip_score'] === (string)$score ? 'checked' : '' ?>>
                                         <label for="ip_<?= $indicator_key ?>_<?= $score ?>">
                                             <span class="score"><?= $score ?></span>
                                             <span class="label"><?= $score == 4 ? 'Dominates' : ($score == 3 ? 'Support' : ($score == 2 ? 'Involved' : ($score == 1 ? 'Partial' : 'None'))) ?></span>
@@ -931,26 +1675,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
                                     <?php endforeach; ?>
                                 </div>
                             </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Comments Section -->
                         <div class="comments-section">
                             <textarea name="scores[<?= $indicator_key ?>][comments]"
                                       placeholder="Add comments or verification notes for this indicator..."
-                                      rows="2"></textarea>
+                                      rows="2"><?= htmlspecialchars($ex['comments'] ?? '') ?></textarea>
                         </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php endforeach; ?>
 
-                <?php $total_indicators += $section_total; ?>
+                <!-- Save This Section button -->
+                <div class="section-actions">
+                    <button type="button" class="btn-save-section" onclick="saveSection('<?= $key ?>')">
+                        <i class="fas fa-save"></i> Save This Section
+                    </button>
+                </div>
             </div>
             <?php endforeach; ?>
         </div>
-
-        <!-- Hidden field for total indicators -->
-        <input type="hidden" id="totalIndicatorsCount" value="<?= $total_indicators ?>">
 
         <!-- Save & Submit -->
         <button type="submit" class="btn-submit">
@@ -965,55 +1712,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     </div>
 </div>
 
+<!-- Already-submitted modal -->
+<div class="modal-overlay" id="sectionModal">
+    <div class="modal-box">
+        <div class="modal-icon">??</div>
+        <h3>Section Already Submitted</h3>
+        <p>This section has already been filled for:</p>
+        <div class="modal-info">
+            <strong>County:</strong> <?= htmlspecialchars($county_name) ?><br>
+            <strong>Period:</strong> <?= htmlspecialchars($period) ?><br>
+            <strong>Submitted:</strong> <span id="modalDate">—</span><br>
+            <strong>Indicators scored:</strong> <span id="modalCount">—</span><br>
+            <strong>CDOH Score:</strong> <span id="modalCdoh">—</span>
+        </div>
+        <p>Would you like to <strong>fill another sheet</strong> (update this section)?</p>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-yes" onclick="proceedToSection()">
+                <i class="fas fa-edit"></i> Yes, Fill Again
+            </button>
+            <button class="modal-btn modal-btn-no" onclick="closeModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentSection = '<?= array_key_first($active_sections) ?>';
 let sectionKeys = <?= json_encode(array_keys($active_sections)) ?>;
 let autoSaveTimer;
 let totalIndicators = <?= $total_indicators ?>;
+let globalAssessmentId = <?= $assessment_id_js ?>;
+let submittedSections = <?= $submitted_sections_json ?>;
+let pendingSection = null;
 
+// -- Tab click: intercept if section already submitted -------------------------
+function handleTabClick(sectionKey) {
+    if (sectionKey === currentSection) return;
+
+    if (submittedSections[sectionKey]) {
+        const s = submittedSections[sectionKey];
+        document.getElementById('modalDate').textContent  = s.submitted_at || '—';
+        document.getElementById('modalCount').textContent = s.sub_count    || '—';
+        const cdohPct = s.avg_cdoh !== null ? Math.round(s.avg_cdoh / 4 * 100) + '%' : '—';
+        document.getElementById('modalCdoh').textContent  = cdohPct;
+        pendingSection = sectionKey;
+        document.getElementById('sectionModal').classList.add('show');
+    } else {
+        showSection(sectionKey);
+    }
+}
+
+function proceedToSection() {
+    closeModal();
+    if (pendingSection) {
+        showSection(pendingSection);
+        pendingSection = null;
+    }
+}
+
+function closeModal() {
+    document.getElementById('sectionModal').classList.remove('show');
+}
+
+// Close on overlay click
+document.getElementById('sectionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// -- Show a section ------------------------------------------------------------
 function showSection(sectionKey) {
-    // Hide all forms
     document.querySelectorAll('.assessment-form').forEach(form => {
         form.style.display = 'none';
     });
-
-    // Show selected form
     document.getElementById('form_' + sectionKey).style.display = 'block';
 
-    // Update tabs
     document.querySelectorAll('.section-tab').forEach(tab => {
         tab.classList.remove('active');
-        if (tab.dataset.section === sectionKey) {
-            tab.classList.add('active');
-        }
+        if (tab.dataset.section === sectionKey) tab.classList.add('active');
     });
 
     currentSection = sectionKey;
     updateSectionProgress(sectionKey);
 }
 
+// -- Progress tracking ---------------------------------------------------------
 function updateProgress() {
-    let totalScored = 0;
-    let totalPossible = totalIndicators * 2; // Each indicator has CDOH and IP scores
+    let totalScored   = 0;
+    let totalPossible = 0;
 
-    // Count all radio buttons that are checked
-    document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
-        totalScored++;
+    document.querySelectorAll('.sub-indicator').forEach(subIndicator => {
+        const cdohRadios = subIndicator.querySelectorAll('.score-column.cdoh input[type="radio"]');
+        const ipRadios   = subIndicator.querySelectorAll('.score-column.ip input[type="radio"]');
+        if (cdohRadios.length > 0) totalPossible++;
+        if (ipRadios.length   > 0) totalPossible++;
     });
 
-    let percent = Math.round((totalScored / totalPossible) * 100) || 0;
+    document.querySelectorAll('input[type="radio"]:checked').forEach(() => totalScored++);
 
-    // Update overall progress
-    document.getElementById('overallProgress').style.width = percent + '%';
-    document.getElementById('progressPercent').textContent = percent + '%';
-    document.getElementById('completionBadge').textContent = percent + '% complete';
+    let percent = totalPossible > 0 ? Math.round((totalScored / totalPossible) * 100) : 0;
+    document.getElementById('overallProgress').style.width  = percent + '%';
+    document.getElementById('progressPercent').textContent  = percent + '%';
+    document.getElementById('completionBadge').textContent  = percent + '% complete';
 
-    // Update section-specific progress
-    sectionKeys.forEach(section => {
-        updateSectionProgress(section);
-    });
+    sectionKeys.forEach(section => updateSectionProgress(section));
 
-    // Trigger auto-save
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(autoSave, 3000);
     document.getElementById('saveStatus').textContent = 'Saving...';
@@ -1024,72 +1827,141 @@ function updateSectionProgress(sectionKey) {
     const sectionForm = document.getElementById('form_' + sectionKey);
     if (!sectionForm) return;
 
-    const sectionRadios = sectionForm.querySelectorAll('input[type="radio"]');
-    const totalSectionRadios = sectionRadios.length;
+    const sectionRadios        = sectionForm.querySelectorAll('input[type="radio"]');
+    const totalSectionRadios   = sectionRadios.length;
     const checkedSectionRadios = sectionForm.querySelectorAll('input[type="radio"]:checked').length;
-
-    let sectionPercent = totalSectionRadios > 0 ? Math.round((checkedSectionRadios / totalSectionRadios) * 100) : 0;
+    let   sectionPercent = totalSectionRadios > 0
+        ? Math.round((checkedSectionRadios / totalSectionRadios) * 100) : 0;
 
     const progressSpan = document.getElementById('section_progress_' + sectionKey);
     if (progressSpan) {
         progressSpan.textContent = sectionPercent + '% Complete';
-
-        // Mark tab as completed if section is 100% done
         const tab = document.querySelector(`.section-tab[data-section="${sectionKey}"]`);
-        if (tab) {
-            if (sectionPercent === 100) {
-                tab.classList.add('completed');
-            } else {
-                tab.classList.remove('completed');
-            }
-        }
+        if (tab) tab.classList.toggle('completed', sectionPercent === 100);
     }
 }
 
 function autoSave() {
-    // Collect form data
-    let formData = new FormData(document.getElementById('assessmentForm'));
-
-    // Simulate save (in production, you'd send to server via AJAX)
-    console.log('Auto-saving...', Object.fromEntries(formData));
-
     document.getElementById('saveStatus').textContent = 'All changes saved';
     document.getElementById('saveSpinner').style.display = 'none';
 }
 
-// Navigation between sections with keyboard
+// -- AJAX: Save a single section -----------------------------------------------
+function saveSection(sectionKey) {
+    const form = document.getElementById('form_' + sectionKey);
+    if (!form) return;
+
+    const btn = form.querySelector('.btn-save-section');
+    btn.classList.add('saving');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+    document.getElementById('saveStatus').textContent = 'Saving section…';
+    document.getElementById('saveSpinner').style.display = 'inline-block';
+
+    // Build FormData from just this section's radios + textareas
+    const fd = new FormData();
+    fd.append('save_section', '1');
+    fd.append('section_key', sectionKey);
+    fd.append('assessment_date', '<?= date('Y-m-d') ?>');
+    fd.append('county_id', '<?= $county_id ?>');
+    fd.append('period', '<?= addslashes($period) ?>');
+    fd.append('assessment_id', globalAssessmentId);
+
+    // Collect all radio + textarea inputs from this section form
+    form.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+        fd.append(radio.name, radio.value);
+    });
+    form.querySelectorAll('textarea').forEach(ta => {
+        fd.append(ta.name, ta.value);
+    });
+
+    const url = window.location.pathname
+        + '?county=<?= $county_id ?>'
+        + '&period=<?= urlencode($period) ?>'
+        + '&sections=<?= implode(',', $sections) ?>';
+
+    fetch(url, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            btn.classList.remove('saving');
+            if (data.success) {
+                // Store new assessment_id globally
+                globalAssessmentId = data.assessment_id;
+
+                // Update submitted sections registry
+                const now = new Date();
+                const fmt = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
+                    + ' ' + now.toTimeString().slice(0,5);
+                submittedSections[sectionKey] = {
+                    submitted_at : fmt,
+                    sub_count    : data.saved,
+                    avg_cdoh     : data.avg_cdoh_pct * 4 / 100
+                };
+
+                // Update the submitted tag inside the section header
+                const tag = document.getElementById('stag_' + sectionKey);
+                if (tag) {
+                    tag.style.display = '';
+                    tag.innerHTML = `<i class="fas fa-check-circle"></i> Submitted ${fmt}`
+                        + ` &nbsp;·&nbsp; ${data.saved} indicators`
+                        + (data.avg_cdoh_pct ? ` &nbsp;·&nbsp; CDOH: ${data.avg_cdoh_pct}%` : '');
+                }
+
+                // Mark tab as completed
+                const tab = document.querySelector(`.section-tab[data-section="${sectionKey}"]`);
+                if (tab) tab.classList.add('completed');
+
+                btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                document.getElementById('saveStatus').textContent = 'Section saved ?';
+                document.getElementById('saveSpinner').style.display = 'none';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-save"></i> Save This Section';
+                }, 2500);
+            } else {
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error — Retry';
+                document.getElementById('saveStatus').textContent = 'Error: ' + (data.error || 'unknown');
+                document.getElementById('saveSpinner').style.display = 'none';
+            }
+        })
+        .catch(err => {
+            btn.classList.remove('saving');
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Network Error';
+            document.getElementById('saveStatus').textContent = 'Network error';
+            document.getElementById('saveSpinner').style.display = 'none';
+            console.error(err);
+        });
+}
+
+// -- Keyboard nav --------------------------------------------------------------
 document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.key === 'ArrowRight') {
         e.preventDefault();
-        let currentIndex = sectionKeys.indexOf(currentSection);
-        if (currentIndex < sectionKeys.length - 1) {
-            showSection(sectionKeys[currentIndex + 1]);
-        }
+        let i = sectionKeys.indexOf(currentSection);
+        if (i < sectionKeys.length - 1) handleTabClick(sectionKeys[i + 1]);
     } else if (e.ctrlKey && e.key === 'ArrowLeft') {
         e.preventDefault();
-        let currentIndex = sectionKeys.indexOf(currentSection);
-        if (currentIndex > 0) {
-            showSection(sectionKeys[currentIndex - 1]);
-        }
+        let i = sectionKeys.indexOf(currentSection);
+        if (i > 0) handleTabClick(sectionKeys[i - 1]);
     }
 });
 
-// Initialize on load
+// -- Init ----------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function() {
     showSection(currentSection);
     updateProgress();
 
-    // Set total indicators display
-    document.getElementById('totalIndicators').textContent = totalIndicators;
+    // Mark already-submitted tabs with completed class on load
+    Object.keys(submittedSections).forEach(k => {
+        const tab = document.querySelector(`.section-tab[data-section="${k}"]`);
+        if (tab) tab.classList.add('completed');
+    });
 });
 
-// Form validation before submit
+// Form validation before full submit
 document.getElementById('assessmentForm').addEventListener('submit', function(e) {
-    const totalRadios = document.querySelectorAll('input[type="radio"]').length;
+    const totalRadios   = document.querySelectorAll('.sub-indicator').length * 2;
     const checkedRadios = document.querySelectorAll('input[type="radio"]:checked').length;
-
-    if (checkedRadios < totalRadios) {
-        if (!confirm('You have not completed all indicators. Incomplete sections will be saved as draft. Continue?')) {
+    if (checkedRadios < totalRadios * 0.5) {
+        if (!confirm('You have completed less than 50% of the indicators. Are you sure you want to submit?')) {
             e.preventDefault();
         }
     }

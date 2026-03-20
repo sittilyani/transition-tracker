@@ -12,22 +12,21 @@ if (!isset($_SESSION['user_id'])) {
 // Get counties for dropdown
 $counties = $conn->query("SELECT county_id, county_name FROM counties ORDER BY county_name");
 
-// Get assessment periods - last 8 quarters
+// Get assessment periods
 $quarters = [];
-for ($i = 0; $i < 8; $i++) {
+for ($i = 0; $i < 4; $i++) {
     $year = date('Y') - floor($i/4);
     $q_num = 4 - ($i % 4);
     $quarters[] = "Q$q_num $year";
 }
 
-// Get saved assessments for quick load - FIXED: Use correct table and column names
+// Get saved assessments for quick load
 $saved_assessments = $conn->query("
-    SELECT ta.assessment_id, c.county_name, ta.assessment_period,
-           ta.overall_cdoh_score as total_score, ta.readiness_level as level,
-           ta.created_at
-    FROM transition_assessments ta
-    JOIN counties c ON ta.county_id = c.county_id
-    ORDER BY ta.created_at DESC
+    SELECT tb.assessment_id, c.county_name, tb.assessment_period, tb.total_score_t1,
+           tb.level_t1, tb.created_at
+    FROM transition_benchmarking tb
+    JOIN counties c ON tb.county_id = c.county_id
+    ORDER BY tb.created_at DESC
     LIMIT 10
 ");
 
@@ -70,7 +69,7 @@ $sections = [
             'T6B' => 'Transition of Quality Improvement: Level of Autonomy of the CDOH'
         ]
     ],
-    'identification_linkage' => [
+    'patient_identification' => [
         'title' => 'COUNTY LEVEL HIV/TB PATIENT IDENTIFICATION AND LINKAGE TO TREATMENT',
         'icon' => 'fa-user-plus',
         'color' => '#4a6ae0',
@@ -79,7 +78,7 @@ $sections = [
             'T7B' => 'Transition of Patient identification and linkage to treatment: Level of Autonomy of the CDOH'
         ]
     ],
-    'retention_suppression' => [
+    'patient_retention' => [
         'title' => 'COUNTY LEVEL PATIENT RETENTION, ADHERENCE AND VIRAL SUPPRESSION SERVICES',
         'icon' => 'fa-heartbeat',
         'color' => '#5a7af8',
@@ -88,7 +87,7 @@ $sections = [
             'T8B' => 'Transition of Patient retention, adherence and Viral suppression services: Level of Autonomy of the CDOH'
         ]
     ],
-    'prevention_kp' => [
+    'prevention' => [
         'title' => 'COUNTY LEVEL HIV PREVENTION AND KEY POPULATION SERVICES',
         'icon' => 'fa-shield-alt',
         'color' => '#6a8aff',
@@ -198,12 +197,6 @@ $sections = [
         ]
     ]
 ];
-
-// Calculate total indicators for progress tracking
-$total_indicators = 0;
-foreach ($sections as $section) {
-    $total_indicators += count($section['indicators']);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -277,7 +270,6 @@ foreach ($sections as $section) {
             gap: 18px;
             transition: transform .2s, box-shadow .2s;
             border-left: 4px solid #0D1A63;
-            cursor: pointer;
         }
         .action-card:hover {
             transform: translateY(-2px);
@@ -453,7 +445,6 @@ foreach ($sections as $section) {
             color: #fff;
             font-size: 12px;
             background: #fff;
-            transition: all .2s;
         }
         .indicator-check.checked {
             background: #0D1A63;
@@ -580,21 +571,21 @@ foreach ($sections as $section) {
 
     <!-- Quick Actions -->
     <div class="quick-actions">
-        <div class="action-card" onclick="startNewAssessment()">
+        <div class="action-card" onclick="startNewAssessment()" style="cursor: pointer;">
             <div class="action-icon"><i class="fas fa-plus"></i></div>
             <div class="action-content">
                 <h3>Start New Assessment</h3>
                 <p>Create a complete transition benchmarking assessment for a county</p>
             </div>
         </div>
-        <div class="action-card" onclick="continueAssessment()">
+        <div class="action-card" onclick="continueAssessment()" style="cursor: pointer;">
             <div class="action-icon"><i class="fas fa-play-circle"></i></div>
             <div class="action-content">
                 <h3>Continue Draft</h3>
                 <p>Resume a previously started assessment</p>
             </div>
         </div>
-        <div class="action-card" onclick="viewReports()">
+        <div class="action-card" onclick="viewReports()" style="cursor: pointer;">
             <div class="action-icon"><i class="fas fa-chart-pie"></i></div>
             <div class="action-content">
                 <h3>View Analytics</h3>
@@ -654,7 +645,7 @@ foreach ($sections as $section) {
         <?php foreach ($sections as $key => $section): ?>
         <div class="section-card" data-section="<?= $key ?>" onclick="toggleSection('<?= $key ?>')">
             <div class="section-header">
-                <div class="section-icon" style="background: <?= $section['color'] ?>">
+                <div class="section-icon" style="--color: <?= $section['color'] ?>">
                     <i class="fas <?= $section['icon'] ?>"></i>
                 </div>
                 <h3><?= $section['title'] ?></h3>
@@ -667,7 +658,7 @@ foreach ($sections as $section) {
                             <i class="fas fa-check"></i>
                         </span>
                         <span class="indicator-code"><?= $code ?>:</span>
-                        <span style="flex: 1;"><?= htmlspecialchars(substr($desc, 0, 60)) ?>...</span>
+                        <span style="flex: 1;"><?= substr($desc, 0, 60) ?>...</span>
                     </li>
                     <?php endforeach; ?>
                 </ul>
@@ -680,7 +671,7 @@ foreach ($sections as $section) {
     <div class="progress-summary" id="progressSummary" style="display: none;">
         <div style="min-width: 120px;">
             <span style="font-size: 13px; color: #666;">Total Indicators</span>
-            <div style="font-size: 24px; font-weight: 800; color: #0D1A63;"><?= $total_indicators ?></div>
+            <div style="font-size: 24px; font-weight: 800; color: #0D1A63;">42</div>
         </div>
         <div style="flex: 1;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
@@ -709,7 +700,7 @@ foreach ($sections as $section) {
                 <tr>
                     <th>County</th>
                     <th>Period</th>
-                    <th>CDOH Score</th>
+                    <th>T1 Score</th>
                     <th>Level</th>
                     <th>Date</th>
                     <th>Actions</th>
@@ -720,12 +711,12 @@ foreach ($sections as $section) {
                     <?php while ($row = $saved_assessments->fetch_assoc()): ?>
                     <tr>
                         <td><strong><?= htmlspecialchars($row['county_name']) ?></strong></td>
-                        <td><?= htmlspecialchars($row['assessment_period']) ?></td>
-                        <td><?= $row['total_score'] ?>/100</td>
+                        <td><?= $row['assessment_period'] ?></td>
+                        <td><?= $row['total_score_t1'] ?>/44</td>
                         <td>
                             <span class="badge-level
-                                <?= strtolower(str_replace(' ', '-', $row['level'] ?? 'not-ready')) ?>">
-                                <?= $row['level'] ?? 'Not Rated' ?>
+                                <?= strtolower(str_replace(' ', '-', $row['level_t1'] ?? 'low')) ?>">
+                                <?= $row['level_t1'] ?? 'Not Rated' ?>
                             </span>
                         </td>
                         <td><?= date('d M Y', strtotime($row['created_at'])) ?></td>
@@ -754,7 +745,7 @@ foreach ($sections as $section) {
     <!-- Footer Actions -->
     <div class="footer-actions">
         <div>
-            <a href="transition_guide.php" class="btn-outline">
+            <a href="KCT Baseline Assessment  OCOM Tool_V3.2_ Dec 2021_Philip.docx" class="btn-outline">
                 <i class="fas fa-book"></i> Assessment Guide
             </a>
             <a href="transition_faq.php" class="btn-outline" style="margin-left: 10px;">
@@ -773,13 +764,27 @@ foreach ($sections as $section) {
 <script>
 // Selected sections storage
 let selectedSections = new Set();
-let totalIndicators = <?= $total_indicators ?>;
-
-// Calculate indicators per section
-let indicatorsPerSection = {};
-<?php foreach ($sections as $key => $section): ?>
-indicatorsPerSection['<?= $key ?>'] = <?= count($section['indicators']) ?>;
-<?php endforeach; ?>
+let totalIndicators = 42; // Total across all sections
+let indicatorsPerSection = {
+    'leadership': 3,
+    'supervision': 2,
+    'special_initiatives': 2,
+    'quality_improvement': 2,
+    'patient_identification': 2,
+    'patient_retention': 2,
+    'prevention': 2,
+    'finance': 2,
+    'sub_grants': 2,
+    'commodities': 2,
+    'equipment': 2,
+    'laboratory': 2,
+    'inventory': 2,
+    'training': 2,
+    'hr_management': 2,
+    'data_management': 2,
+    'patient_monitoring': 2,
+    'institutional_ownership': 3
+};
 
 function toggleSection(sectionKey) {
     const card = document.querySelector(`[data-section="${sectionKey}"]`);
@@ -873,7 +878,6 @@ function proceedToAssessment() {
     const sections = Array.from(selectedSections).join(',');
     const url = `transition_assessment.php?county=${county}&period=${encodeURIComponent(period)}&sections=${sections}`;
 
-    console.log('Navigating to:', url); // For debugging
     window.location.href = url;
 }
 
@@ -936,8 +940,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('periodSelect').value = savedPeriod;
         document.getElementById('setupCard').style.border = '3px solid #0D1A63';
     }
-
-    updateProgress();
 });
 </script>
 </body>
