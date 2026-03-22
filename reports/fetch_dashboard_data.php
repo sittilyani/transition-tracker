@@ -32,7 +32,7 @@ if (!empty($subcounty)) {
 }
 
 if ($facility > 0) {
-    $whereClauses[] = "facility_id = ?";
+    $whereClauses[] = "facility_name = ?";
     $params[] = $facility;
     $types .= 'i';
 }
@@ -95,7 +95,7 @@ try {
     $stmt->close();
 
     // Total unique staff
-    $sql = "SELECT COUNT(DISTINCT staff_name) as total FROM staff_trainings $whereSQL";
+    $sql = "SELECT COUNT(DISTINCT id_number) as total FROM staff_trainings $whereSQL";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
@@ -107,7 +107,7 @@ try {
     $stmt->close();
 
     // Total unique facilities
-    $sql = "SELECT COUNT(DISTINCT facility_id) as total FROM staff_trainings $whereSQL";
+    $sql = "SELECT COUNT(DISTINCT facility_name) as total FROM county_staff $whereSQL";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
@@ -167,20 +167,20 @@ try {
     $stmt->close();
 
     // Cadre distribution
-    $sql = "SELECT cadrename as cadre_name, COUNT(*) as count 
-            FROM staff_trainings 
-            WHERE cadrename IS NOT NULL AND cadrename != '' $whereSQL 
-            GROUP BY cadrename 
+    $sql = "SELECT cadre_name as cadre_name, COUNT(*) as count
+            FROM county_staff
+            WHERE cadre_name IS NOT NULL AND cadre_name != '' $whereSQL 
+            GROUP BY cadre_name 
             ORDER BY count DESC 
             LIMIT 8";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
         // Need to reconstruct WHERE for this query
         $whereSQL2 = str_replace("WHERE ", "AND ", $whereSQL);
-        $sql = "SELECT cadrename as cadre_name, COUNT(*) as count 
-                FROM staff_trainings 
-                WHERE cadrename IS NOT NULL AND cadrename != '' $whereSQL2 
-                GROUP BY cadrename 
+        $sql = "SELECT cadre_name as cadre_name, COUNT(*) as count 
+                FROM staff_trainings
+                WHERE cadre_name IS NOT NULL AND cadre_name != '' $whereSQL2 
+                GROUP BY cadre_name 
                 ORDER BY count DESC 
                 LIMIT 8";
         $stmt = $conn->prepare($sql);
@@ -198,7 +198,7 @@ try {
     $sql = "SELECT 
                 st.*,
                 DATE(st.created_at) as training_date_only
-            FROM staff_trainings st 
+            FROM training_sessions st 
             $whereSQL 
             ORDER BY st.created_at DESC 
             LIMIT 500";
@@ -215,7 +215,7 @@ try {
     $stmt->close();
 
     // Get unique training sessions count for additional info
-    $unique_sessions_query = "SELECT COUNT(DISTINCT CONCAT(course_id, '_', DATE(created_at))) as unique_sessions FROM staff_trainings $whereSQL";
+    $unique_sessions_query = "SELECT COUNT(DISTINCT CONCAT(course_id, '_', DATE(created_at))) as unique_sessions FROM training_sessions $whereSQL";
     $unique_result = $conn->query($unique_sessions_query);
     $unique_row = $unique_result->fetch_assoc();
     $stats['uniqueTrainingSessions'] = $unique_row['unique_sessions'];

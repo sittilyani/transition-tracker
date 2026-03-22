@@ -669,6 +669,160 @@ input[type=number].form-control{-moz-appearance:textfield;}
     </div>
 </div>
 
+<!-- ═══ SECTION 8: Integration Readiness ════════════════════════════════════════ -->
+<div class="form-section">
+    <div class="section-head"><i class="fas fa-project-diagram"></i> Section 8: Integration Readiness & Sustainability(Observations)</div>
+    <div class="section-body">
+
+        <div class="form-grid">
+
+            <!-- Leadership -->
+            <div class="form-group">
+                <label>Q86. Leadership commitment to HIV integration</label>
+                <select name="leadership_commitment" class="form-control">
+                    <option value="">Select</option>
+                    <option>High</option>
+                    <option>Moderate</option>
+                    <option>Low</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q87. Is there a transition/integration plan?</label>
+                <select name="transition_plan" class="form-control">
+                    <option value="">Select</option>
+                    <option>Yes - Implemented</option>
+                    <option>Yes - Not Implemented</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q88. HIV services included in AWP/Budget?</label>
+                <select name="hiv_in_awp" class="form-control">
+                    <option value="">Select</option>
+                    <option>Fully</option>
+                    <option>Partially</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <!-- HR -->
+            <div class="form-group">
+                <label>Q89. Estimated HRH gap (%)</label>
+                <select name="hrh_gap" class="form-control">
+                    <option value="">Select</option>
+                    <option>0-10%</option>
+                    <option>10-30%</option>
+                    <option>>30%</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q90. Are staff multi-skilled?</label>
+                <select name="staff_multiskilled" class="form-control">
+                    <option value="">Select</option>
+                    <option>Yes</option>
+                    <option>Partial</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q91. Is there roving/visiting HIV/TB staff?</label>
+                <select name="roving_staff" class="form-control">
+                    <option value="">Select</option>
+                    <option>Yes - Regular</option>
+                    <option>Yes - Irregular</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <!-- Infrastructure -->
+            <div class="form-group">
+                <label>Q92. Infrastructure capacity for integration</label>
+                <select name="infrastructure_capacity" class="form-control">
+                    <option value="">Select</option>
+                    <option>Adequate</option>
+                    <option>Minor changes needed</option>
+                    <option>Major redesign needed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q93. Space adequacy</label>
+                <select name="space_adequacy" class="form-control">
+                    <option value="">Select</option>
+                    <option>Adequate</option>
+                    <option>Congested</option>
+                    <option>Severely Inadequate</option>
+                </select>
+            </div>
+
+            <!-- Service -->
+            <div class="form-group">
+                <label>Q94. Can HIV services run without CCC?</label>
+                <select name="service_delivery_without_ccc" class="form-control">
+                    <option value="">Select</option>
+                    <option>Yes</option>
+                    <option>Partially</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Q95. Average patient waiting time</label>
+                <select name="avg_wait_time" class="form-control">
+                    <option value="">Select</option>
+                    <option><1 hour</option>
+                    <option>1-3 hours</option>
+                    <option>>3 hours</option>
+                </select>
+            </div>
+
+            <!-- Data -->
+            <div class="form-group">
+                <label>Q96. Data integration level</label>
+                <select name="data_integration_level" class="form-control">
+                    <option value="">Select</option>
+                    <option>Fully Integrated</option>
+                    <option>Partial</option>
+                    <option>Fragmented</option>
+                </select>
+            </div>
+
+            <!-- Finance -->
+            <div class="form-group">
+                <label>Q97. Financing coverage for HIV services</label>
+                <select name="financing_coverage" class="form-control">
+                    <option value="">Select</option>
+                    <option>High</option>
+                    <option>Moderate</option>
+                    <option>Low</option>
+                </select>
+            </div>
+
+            <!-- Risk -->
+            <div class="form-group">
+                <label>Q98. Risk of service disruption</label>
+                <select name="disruption_risk" class="form-control">
+                    <option value="">Select</option>
+                    <option>Low</option>
+                    <option>Moderate</option>
+                    <option>High</option>
+                </select>
+            </div>
+
+            <!-- Open -->
+            <div class="form-group full">
+                <label>Q99. Key barriers to integration</label>
+                <textarea name="integration_barriers" class="form-control"></textarea>
+            </div>
+
+        </div>
+
+    </div>
+</div>
 <!-- ═══ ADMINISTRATION ══════════════════════════════════════════════════════ -->
 <div class="form-section">
     <div class="section-head"><i class="fas fa-user-check"></i> Data Collection Details</div>

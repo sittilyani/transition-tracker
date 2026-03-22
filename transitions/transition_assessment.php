@@ -27,6 +27,37 @@ $county_name = $county_result->fetch_assoc()['county_name'];
 $assessment_id = isset($_GET['assessment_id']) ? (int)$_GET['assessment_id'] : 0;
 $existing_scores = [];
 
+// -- Load existing RAW scores (sub-indicator level) for pre-filling form ------
+// key: "section_indicator_subcode" e.g. "leadership_T1_T1.1"
+$existing_raw = [];       // [composite_key => ['cdoh'=>x,'ip'=>x,'comments'=>x]]
+$submitted_sections = []; // [section_key => ['submitted_at'=>..., 'sub_count'=>..., 'avg_cdoh'=>...]]
+
+// If no assessment_id in URL, look up by county+period (draft or submitted)
+if (!$assessment_id) {
+    $chk = mysqli_fetch_assoc(mysqli_query($conn,
+        "SELECT assessment_id FROM transition_assessments
+         WHERE county_id=$county_id AND assessment_period='$period'
+         ORDER BY assessment_date DESC LIMIT 1"));
+    if ($chk) $assessment_id = (int)$chk['assessment_id'];
+}
+
+if ($assessment_id) {
+    // Load raw scores
+    $rr = mysqli_query($conn,
+        "SELECT composite_key, cdoh_score, ip_score, comments
+         FROM transition_raw_scores WHERE assessment_id = $assessment_id");
+    if ($rr) while ($row = mysqli_fetch_assoc($rr)) {
+        $existing_raw[$row['composite_key']] = $row;
+    }
+    // Load section submission log
+    $sr = mysqli_query($conn,
+        "SELECT section_key, submitted_at, sub_count, avg_cdoh, avg_ip
+         FROM transition_section_submissions WHERE assessment_id = $assessment_id");
+    if ($sr) while ($row = mysqli_fetch_assoc($sr)) {
+        $submitted_sections[$row['section_key']] = $row;
+    }
+}
+
 // Define scoring criteria for each level
 $scoring_criteria = [
     4 => ['label' => 'Fully adequate with evidence', 'class' => 'level-4'],
@@ -370,7 +401,7 @@ $all_sections = [
                     'T10A.6' => 'Conducts external audit',
                     'T10A.7' => 'Responding to audits/reviews',
                     'T10A.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
-                    'T10A.9' => 'Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
+                    'T10A.9' => 'Reducing the HIV/TB response funding as a result of the county?s domestic resource mobilization (HIV/TB funding for the last FY)'
                 ]
             ],
             'T10B' => [
@@ -385,7 +416,7 @@ $all_sections = [
                     'T10B.6' => 'Conducts external audit',
                     'T10B.7' => 'Responding to audits/reviews',
                     'T10B.8' => 'Funding the overall county HIV/TB response (HIV/TB funding for the past 5 years)',
-                    'T10B.9' => 'Reducing the HIV/TB response funding as a result of the county’s domestic resource mobilization (HIV/TB funding for the last FY)'
+                    'T10B.9' => 'Reducing the HIV/TB response funding as a result of the county?s domestic resource mobilization (HIV/TB funding for the last FY)'
                 ]
             ]
         ]
@@ -543,9 +574,9 @@ $all_sections = [
                 'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Involvement of the IP',
                 'sub_indicators' => [
                     'T15A.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
-                    'T15A.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
-                    'T15A.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
-                    'T15A.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
+                    'T15A.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process ? (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15A.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes ? (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15A.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP?s General Ledger ? (verify annual Assets Inventory Audit Report)',
                     'T15A.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
                     'T15A.6' => 'Oversight Supervision of the Inventory Management functions'
                 ]
@@ -555,9 +586,9 @@ $all_sections = [
                 'name' => 'Transition of Inventory Management for Equipment & Commodities: Level of Autonomy of the CDOH',
                 'sub_indicators' => [
                     'T15B.1' => 'Needs determination function which develops quantity and resource requirements, consisting of Inventory Planning and Budgeting',
-                    'T15B.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process – (verify Ordering and Commodities/ Stores list updated on transactional basis)',
-                    'T15B.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes – (Check USG Assets & Equipment Disposal Guidelines)',
-                    'T15B.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP’s General Ledger – (verify annual Assets Inventory Audit Report)',
+                    'T15B.2' => 'Inventory in storage function including Receipt and Inspection process, and Storing process ? (verify Ordering and Commodities/ Stores list updated on transactional basis)',
+                    'T15B.3' => 'Inventory Disposition Function including Loaning, Issuing and, Disposal Processes ? (Check USG Assets & Equipment Disposal Guidelines)',
+                    'T15B.4' => 'Program monitoring function of Inventory control which provides sufficient transaction audit trails to support balances of inventory on the IP?s General Ledger ? (verify annual Assets Inventory Audit Report)',
                     'T15B.5' => 'Designated qualified and certified Supply Chain Management professional and, membership',
                     'T15B.6' => 'Oversight Supervision of the Inventory Management functions'
                 ]
@@ -710,7 +741,7 @@ $all_sections = [
             ]
         ]
     ],
-    'institution_ownership' => [
+    'institutional_ownership' => [
         'title' => 'COUNTY LEVEL INSTITUTIONAL OWNERSHIP INDICATOR',
         'icon' => 'fa-building',
         'color' => '#F5A623',
@@ -756,7 +787,141 @@ $all_sections = [
 // Filter sections based on selection
 $active_sections = array_intersect_key($all_sections, array_flip($sections));
 
-// Handle form submission
+// -- Handle SECTION save (AJAX per-section) ------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_section'])) {
+    $section_key     = mysqli_real_escape_string($conn, $_POST['section_key'] ?? '');
+    $assessed_by     = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
+    $assessment_date = mysqli_real_escape_string($conn, $_POST['assessment_date'] ?? date('Y-m-d'));
+
+    mysqli_begin_transaction($conn);
+    try {
+        // Create or reuse assessment record
+        if (!$assessment_id) {
+            $ex = mysqli_fetch_assoc(mysqli_query($conn,
+                "SELECT assessment_id FROM transition_assessments
+                 WHERE county_id=$county_id AND assessment_period='$period' LIMIT 1"));
+            if ($ex) {
+                $assessment_id = (int)$ex['assessment_id'];
+            } else {
+                mysqli_query($conn,
+                    "INSERT INTO transition_assessments
+                     (county_id, assessment_period, assessment_date, assessed_by, assessment_status)
+                     VALUES ($county_id,'$period','$assessment_date','$assessed_by','draft')");
+                $assessment_id = (int)mysqli_insert_id($conn);
+            }
+        }
+
+        // Delete existing raw scores for this section only
+        mysqli_query($conn,
+            "DELETE FROM transition_raw_scores
+             WHERE assessment_id=$assessment_id AND section_key='$section_key'");
+
+        $saved = 0;
+        $sum_cdoh = 0; $cnt_cdoh = 0;
+        $sum_ip   = 0; $cnt_ip   = 0;
+
+        // Scores arrive as scores[section_indicator_subcode][cdoh/ip/comments]
+        if (!empty($_POST['scores'])) {
+            foreach ($_POST['scores'] as $composite_key => $vals) {
+                $ck_safe  = mysqli_real_escape_string($conn, $composite_key);
+                // Parse composite key e.g. "leadership_T1_T1.1"
+                $parts    = explode('_', $composite_key);
+                $sub_code = end($parts);                          // T1.1
+                $sub_safe = mysqli_real_escape_string($conn, $sub_code);
+                $ind_code = preg_replace('/\.\d+$/', '', $sub_code); // T1
+                $ind_safe = mysqli_real_escape_string($conn, $ind_code);
+
+                $cdoh  = isset($vals['cdoh']) && $vals['cdoh'] !== '' ? (int)$vals['cdoh'] : 'NULL';
+                $ip    = isset($vals['ip'])   && $vals['ip']   !== '' ? (int)$vals['ip']   : 'NULL';
+                $comm  = mysqli_real_escape_string($conn, $vals['comments'] ?? '');
+
+                if ($cdoh === 'NULL' && $ip === 'NULL') continue;
+
+                mysqli_query($conn,
+                    "INSERT INTO transition_raw_scores
+                     (assessment_id, section_key, indicator_code, sub_indicator_code,
+                      composite_key, cdoh_score, ip_score, comments, scored_by)
+                     VALUES ($assessment_id,'$section_key','$ind_safe','$sub_safe',
+                             '$ck_safe',$cdoh,$ip,'$comm','$assessed_by')
+                     ON DUPLICATE KEY UPDATE
+                       cdoh_score=VALUES(cdoh_score), ip_score=VALUES(ip_score),
+                       comments=VALUES(comments), scored_at=NOW()");
+                $saved++;
+                if ($cdoh !== 'NULL') { $sum_cdoh += $cdoh; $cnt_cdoh++; }
+                if ($ip   !== 'NULL') { $sum_ip   += $ip;   $cnt_ip++;   }
+            }
+        }
+
+        $avg_c_val = $cnt_cdoh > 0 ? round($sum_cdoh/$cnt_cdoh, 2) : 'NULL';
+        $avg_i_val = $cnt_ip   > 0 ? round($sum_ip/$cnt_ip,     2) : 'NULL';
+
+        // Upsert section submission record
+        mysqli_query($conn,
+            "INSERT INTO transition_section_submissions
+             (assessment_id, section_key, submitted_by, sub_count, avg_cdoh, avg_ip)
+             VALUES ($assessment_id,'$section_key','$assessed_by',$saved,$avg_c_val,$avg_i_val)
+             ON DUPLICATE KEY UPDATE
+               submitted_by='$assessed_by', submitted_at=NOW(),
+               sub_count=$saved, avg_cdoh=$avg_c_val, avg_ip=$avg_i_val");
+
+        // Also sync aggregate transition_scores (one row per indicator_id) for backward-compat
+        $indicator_by_code_local = [];
+        $ir = mysqli_query($conn, "SELECT indicator_id, indicator_code FROM transition_indicators");
+        if ($ir) while ($row = mysqli_fetch_assoc($ir))
+            $indicator_by_code_local[$row['indicator_code']] = $row['indicator_id'];
+
+        $ind_agg = mysqli_query($conn,
+            "SELECT indicator_code,
+                    AVG(cdoh_score) avg_c, AVG(ip_score) avg_i
+             FROM transition_raw_scores
+             WHERE assessment_id=$assessment_id AND section_key='$section_key'
+             GROUP BY indicator_code");
+        if ($ind_agg) while ($row = mysqli_fetch_assoc($ind_agg)) {
+            $iid = $indicator_by_code_local[$row['indicator_code']] ?? 0;
+            if (!$iid) continue;
+            $ac = $row['avg_c'] !== null ? round((float)$row['avg_c']) : 'NULL';
+            $ai = $row['avg_i'] !== null ? round((float)$row['avg_i']) : 'NULL';
+            mysqli_query($conn,
+                "INSERT INTO transition_scores (assessment_id, indicator_id, cdoh_score, ip_score)
+                 VALUES ($assessment_id,$iid,$ac,$ai)
+                 ON DUPLICATE KEY UPDATE cdoh_score=$ac, ip_score=$ai");
+        }
+
+        // Recompute overall scores
+        $ov = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT AVG(cdoh_score) oc, AVG(ip_score) oi
+             FROM transition_raw_scores WHERE assessment_id=$assessment_id"));
+        $oc = $ov['oc'] !== null ? round((float)$ov['oc']/4*100) : 0;
+        $oi = $ov['oi'] !== null ? round((float)$ov['oi']/4*100) : 0;
+        $rd = $oc>=70?'Transition':($oc>=50?'Support and Monitor':'Not Ready');
+        mysqli_query($conn,
+            "UPDATE transition_assessments SET
+             overall_cdoh_score=$oc, overall_ip_score=$oi,
+             overall_gap_score=GREATEST(0,$oi-$oc), overall_overlap_score=LEAST($oc,$oi),
+             readiness_level='$rd', assessment_status='draft'
+             WHERE assessment_id=$assessment_id");
+
+        mysqli_commit($conn);
+
+        echo json_encode([
+            'success'        => true,
+            'assessment_id'  => $assessment_id,
+            'section_key'    => $section_key,
+            'saved'          => $saved,
+            'submitted_at'   => date('d M Y H:i'),
+            'avg_cdoh_pct'   => $avg_c_val !== 'NULL' ? round((float)$avg_c_val/4*100) : 0,
+            'avg_ip_pct'     => $avg_i_val !== 'NULL' ? round((float)$avg_i_val/4*100) : 0,
+        ]);
+        exit();
+
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+        exit();
+    }
+}
+
+// -- Handle full SUBMIT ALL (final) --------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     $assessed_by = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
     $assessment_date = mysqli_real_escape_string($conn, $_POST['assessment_date'] ?? date('Y-m-d'));
@@ -767,7 +932,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
     try {
         // Create new assessment or update existing
         if ($assessment_id) {
-            // Update existing assessment
             $update_query = "UPDATE transition_assessments SET
                 assessment_date = '$assessment_date',
                 assessed_by = '$assessed_by',
@@ -776,13 +940,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
             if (!mysqli_query($conn, $update_query)) {
                 throw new Exception("Error updating assessment: " . mysqli_error($conn));
             }
-
-            // Delete existing scores
+            // Delete existing scores (aggregate) ? raw scores kept
             if (!mysqli_query($conn, "DELETE FROM transition_scores WHERE assessment_id = $assessment_id")) {
                 throw new Exception("Error deleting existing scores: " . mysqli_error($conn));
             }
         } else {
-            // Insert new assessment
             $insert_query = "INSERT INTO transition_assessments
                 (county_id, assessment_period, assessment_date, assessed_by, assessment_status)
                 VALUES ($county_id, '$period', '$assessment_date', '$assessed_by', 'submitted')";
@@ -792,83 +954,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_assessment'])) {
             $assessment_id = mysqli_insert_id($conn);
         }
 
-        // Save scores for each indicator
+        // Save raw + aggregate scores from POST
         $total_cdoh = 0;
         $total_ip = 0;
         $indicator_count = 0;
 
-        foreach ($_POST['scores'] as $indicator_key => $scores) {
-            // Parse the key to get the indicator code (e.g., "T1.1" from "leadership_T1_T1.1")
-            $parts = explode('_', $indicator_key);
-            $indicator_code = end($parts); // Get the last part which should be the indicator code like T1.1
+        // Rebuild indicator_by_code
+        $indicator_by_code = [];
+        $ir2 = mysqli_query($conn, "SELECT indicator_id, indicator_code FROM transition_indicators");
+        if ($ir2) while ($row = mysqli_fetch_assoc($ir2))
+            $indicator_by_code[$row['indicator_code']] = $row['indicator_id'];
 
-            // Find the indicator_id from our mapping
-            $indicator_id = isset($indicator_by_code[$indicator_code]) ? $indicator_by_code[$indicator_code] : 0;
+        foreach ($_POST['scores'] as $composite_key => $scores) {
+            $parts          = explode('_', $composite_key);
+            $sub_code       = end($parts);
+            $ind_code       = preg_replace('/\.\d+$/', '', $sub_code);
+            $section_key_p  = $parts[0] ?? '';
+
+            $indicator_id = $indicator_by_code[$sub_code]
+                ?? $indicator_by_code[$ind_code]
+                ?? 0;
 
             if (!$indicator_id) {
-                // If still not found, try a more flexible approach
-                $find_query = "SELECT indicator_id FROM transition_indicators WHERE indicator_code = '$indicator_code' LIMIT 1";
-                $find_result = mysqli_query($conn, $find_query);
-                if ($find_result && mysqli_num_rows($find_result) > 0) {
-                    $indicator_id = mysqli_fetch_assoc($find_result)['indicator_id'];
-                } else {
-                    // Log the error but continue - don't throw exception
-                    error_log("Could not find indicator ID for code: $indicator_code (key: $indicator_key)");
-                    continue;
-                }
+                $fr = mysqli_query($conn,
+                    "SELECT indicator_id FROM transition_indicators
+                     WHERE indicator_code='".mysqli_real_escape_string($conn,$sub_code)."' LIMIT 1");
+                if ($fr && mysqli_num_rows($fr) > 0)
+                    $indicator_id = mysqli_fetch_assoc($fr)['indicator_id'];
+                else { error_log("Cannot find indicator: $sub_code"); continue; }
             }
 
             $cdoh_score = isset($scores['cdoh']) && $scores['cdoh'] !== '' ? (int)$scores['cdoh'] : null;
-            $ip_score = isset($scores['ip']) && $scores['ip'] !== '' ? (int)$scores['ip'] : null;
-            $comments = mysqli_real_escape_string($conn, $scores['comments'] ?? '');
+            $ip_score   = isset($scores['ip'])   && $scores['ip']   !== '' ? (int)$scores['ip']   : null;
+            $comments   = mysqli_real_escape_string($conn, $scores['comments'] ?? '');
 
-            // Validate that at least one score is provided
-            if ($cdoh_score === null && $ip_score === null) {
-                continue; // Skip if no scores provided
-            }
+            if ($cdoh_score === null && $ip_score === null) continue;
 
+            // Save raw score
+            $ck_safe  = mysqli_real_escape_string($conn, $composite_key);
+            $sub_safe = mysqli_real_escape_string($conn, $sub_code);
+            $ind_safe = mysqli_real_escape_string($conn, $ind_code);
+            $sk_safe  = mysqli_real_escape_string($conn, $section_key_p);
+            $cdoh_sql = $cdoh_score !== null ? $cdoh_score : 'NULL';
+            $ip_sql   = $ip_score   !== null ? $ip_score   : 'NULL';
+            $by_safe  = mysqli_real_escape_string($conn, $_SESSION['full_name'] ?? '');
+            mysqli_query($conn,
+                "INSERT INTO transition_raw_scores
+                 (assessment_id, section_key, indicator_code, sub_indicator_code,
+                  composite_key, cdoh_score, ip_score, comments, scored_by)
+                 VALUES ($assessment_id,'$sk_safe','$ind_safe','$sub_safe',
+                         '$ck_safe',$cdoh_sql,$ip_sql,'$comments','$by_safe')
+                 ON DUPLICATE KEY UPDATE
+                   cdoh_score=VALUES(cdoh_score),ip_score=VALUES(ip_score),
+                   comments=VALUES(comments),scored_at=NOW()");
+
+            // Save aggregate score
             $score_query = "INSERT INTO transition_scores
                 (assessment_id, indicator_id, cdoh_score, ip_score, comments)
-                VALUES ($assessment_id, $indicator_id, " .
-                ($cdoh_score !== null ? $cdoh_score : 'NULL') . ", " .
-                ($ip_score !== null ? $ip_score : 'NULL') . ", '$comments')";
-
+                VALUES ($assessment_id, $indicator_id, $cdoh_sql, $ip_sql, '$comments')";
             if (!mysqli_query($conn, $score_query)) {
-                throw new Exception("Error saving score for indicator $indicator_code: " . mysqli_error($conn));
+                throw new Exception("Error saving score for $sub_code: " . mysqli_error($conn));
             }
 
             if ($cdoh_score !== null) $total_cdoh += $cdoh_score;
-            if ($ip_score !== null) $total_ip += $ip_score;
+            if ($ip_score   !== null) $total_ip   += $ip_score;
             $indicator_count++;
         }
 
-        // Calculate overall scores and readiness level
         $avg_cdoh = $indicator_count > 0 ? round(($total_cdoh / ($indicator_count * 4)) * 100) : 0;
-        $avg_ip = $indicator_count > 0 ? round(($total_ip / ($indicator_count * 4)) * 100) : 0;
+        $avg_ip   = $indicator_count > 0 ? round(($total_ip   / ($indicator_count * 4)) * 100) : 0;
+        $readiness = $avg_cdoh >= 70 ? 'Transition' : ($avg_cdoh >= 50 ? 'Support and Monitor' : 'Not Ready');
 
-        if ($avg_cdoh >= 70) {
-            $readiness = 'Transition';
-        } elseif ($avg_cdoh >= 50) {
-            $readiness = 'Support and Monitor';
-        } else {
-            $readiness = 'Not Ready';
-        }
-
-        // Update assessment with overall scores
         $update_overall = "UPDATE transition_assessments SET
             overall_cdoh_score = $avg_cdoh,
             overall_ip_score = $avg_ip,
             overall_gap_score = GREATEST(0, $avg_ip - $avg_cdoh),
             overall_overlap_score = LEAST($avg_cdoh, $avg_ip),
-            readiness_level = '$readiness'
+            readiness_level = '$readiness',
+            assessment_status = 'submitted'
             WHERE assessment_id = $assessment_id";
-
         if (!mysqli_query($conn, $update_overall)) {
             throw new Exception("Error updating overall scores: " . mysqli_error($conn));
         }
 
         mysqli_commit($conn);
-
         $_SESSION['success_msg'] = 'Assessment saved successfully!';
         header('Location: transition_dashboard.php?county=' . $county_id);
         exit();
@@ -886,6 +1055,10 @@ foreach ($active_sections as $section) {
         $total_indicators += count($indicator['sub_indicators']);
     }
 }
+
+// Build submitted sections data for JS
+$submitted_sections_json = json_encode($submitted_sections);
+$assessment_id_js = (int)$assessment_id;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1260,6 +1433,91 @@ foreach ($active_sections as $section) {
             background: #6c757d;
             color: #fff;
         }
+
+        /* -- Section save button -- */
+        .section-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e4f0;
+        }
+        .btn-save-section {
+            background: #0D1A63;
+            color: #fff;
+            border: none;
+            padding: 11px 26px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-save-section:hover { background: #1a3a9e; transform: translateY(-1px); }
+        .btn-save-section.saving { opacity: .65; cursor: wait; }
+
+        /* Submitted tag inside section header */
+        .submitted-tag {
+            background: rgba(39,174,96,.25);
+            border: 1px solid rgba(39,174,96,.4);
+            color: #d4edda;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* -- Already-submitted Modal -- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 34px 32px;
+            max-width: 460px;
+            width: 92%;
+            box-shadow: 0 24px 64px rgba(0,0,0,.22);
+            text-align: center;
+        }
+        .modal-icon { font-size: 52px; margin-bottom: 14px; }
+        .modal-box h3 { font-size: 20px; font-weight: 800; color: #0D1A63; margin-bottom: 10px; }
+        .modal-box p  { color: #555; font-size: 14px; line-height: 1.6; margin-bottom: 6px; }
+        .modal-info {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 14px 0;
+            font-size: 13px;
+            text-align: left;
+            line-height: 1.8;
+        }
+        .modal-info strong { color: #0D1A63; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+        .modal-btn {
+            padding: 11px 26px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+        }
+        .modal-btn-yes { background: #0D1A63; color: #fff; }
+        .modal-btn-yes:hover { background: #1a3a9e; }
+        .modal-btn-no  { background: #e0e4f0; color: #333; }
+        .modal-btn-no:hover { background: #d0d4e0; }
     </style>
 </head>
 <body>
@@ -1307,7 +1565,7 @@ foreach ($active_sections as $section) {
             $index = 1;
             foreach ($active_sections as $key => $section):
             ?>
-            <div class="section-tab" data-section="<?= $key ?>" onclick="showSection('<?= $key ?>')">
+            <div class="section-tab" id="tab_<?= $key ?>" data-section="<?= $key ?>" onclick="handleTabClick('<?= $key ?>')">
                 <i class="fas <?= $section['icon'] ?? 'fa-file' ?>"></i> <?= $section['title'] ?>
             </div>
             <?php
@@ -1325,18 +1583,35 @@ foreach ($active_sections as $section) {
                     $section_total += count($indicator['sub_indicators']);
                 }
             ?>
-            <div class="assessment-form" id="form_<?= $key ?>" style="display: <?= $key === array_key_first($active_sections) ? 'block' : 'none' ?>;">
+            <div class="assessment-form" id="form_<?= $key ?>" style="display: <?= $key === array_key_first($active_sections) ? 'block' : 'none' ?>;"
+                 data-section="<?= $key ?>">
                 <div class="section-summary">
                     <div>
                         <i class="fas <?= $section['icon'] ?? 'fa-file' ?>"></i>
                         <strong><?= $section['title'] ?></strong>
                         <?php if (!$section['has_ip']): ?>
                         <span class="ip-badge no">CDOH Only</span>
-                        <?php else: ?>
+                        <?php elseif (preg_match('/^IO/', array_key_first($section['indicators']))): ?>
                         <span class="ip-badge yes">CDOH + IP</span>
+                        <?php else: ?>
+                        <span class="ip-badge" style="background:#e0e8ff;color:#0D1A63;">A=IP · B=CDOH</span>
                         <?php endif; ?>
                     </div>
-                    <div class="summary-badge" id="section_progress_<?= $key ?>">0% Complete</div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <?php if (isset($submitted_sections[$key])): $ss = $submitted_sections[$key]; ?>
+                        <span class="submitted-tag" id="stag_<?= $key ?>">
+                            <i class="fas fa-check-circle"></i>
+                            Submitted <?= date('d M Y H:i', strtotime($ss['submitted_at'])) ?>
+                            &nbsp;?&nbsp; <?= $ss['sub_count'] ?> indicators
+                            <?php if ($ss['avg_cdoh'] !== null): ?>
+                            &nbsp;?&nbsp; CDOH: <?= round($ss['avg_cdoh']/4*100) ?>%
+                            <?php endif; ?>
+                        </span>
+                        <?php else: ?>
+                        <span class="submitted-tag" id="stag_<?= $key ?>" style="display:none"></span>
+                        <?php endif; ?>
+                        <div class="summary-badge" id="section_progress_<?= $key ?>">0% Complete</div>
+                    </div>
                 </div>
 
                 <?php foreach ($section['indicators'] as $indicator_code => $indicator): ?>
@@ -1349,6 +1624,21 @@ foreach ($active_sections as $section) {
 
                     <?php foreach ($indicator['sub_indicators'] as $sub_code => $sub_text):
                         $indicator_key = $key . '_' . $indicator_code . '_' . $sub_code;
+                        $ex = $existing_raw[$indicator_key] ?? [];
+
+                        // Determine which score column(s) to show based on indicator_code:
+                        // T_A = IP only | T_B = CDOH only (autonomy) | T1/T2 = CDOH only (adequacy)
+                        // T3 = CDOH only (autonomy labels) | IO = both CDOH + IP (component labels)
+                        $is_ip_only      = (bool)preg_match('/^T\d+A/', $indicator_code);
+                        $is_cdoh_b       = (bool)preg_match('/^T\d+B/', $indicator_code);
+                        $is_leadership   = in_array($indicator_code, ['T1','T2']);
+                        $is_planning     = ($indicator_code === 'T3');
+                        $is_io           = (bool)preg_match('/^IO/', $indicator_code);
+
+                        $labels_ip       = [4=>'Dominates',3=>'Supportive',2=>'Involved',1=>'Partial',0=>'Not involved'];
+                        $labels_autonomy = [4=>'Independent',3=>'Mostly indep.',2=>'Not indep.',1=>'Minimally',0=>'Not involved'];
+                        $labels_adequacy = [4=>'Fully',3=>'Partially',2=>'Some evid.',1=>'No evid.',0=>'Inadequate'];
+                        $labels_io       = [4=>'Complete',3=>'Most',2=>'About half',1=>'Few',0=>'No/N/A'];
                     ?>
                     <div class="sub-indicator">
                         <div class="sub-indicator-header">
@@ -1356,32 +1646,11 @@ foreach ($active_sections as $section) {
                         </div>
                         <div class="sub-indicator-text"><?= $sub_text ?></div>
 
-                        <div class="score-grid">
-                            <!-- CDOH Score Column (always present) -->
-                            <div class="score-column cdoh">
-                                <h4><i class="fas fa-building"></i> CDOH (County)</h4>
-                                <div class="radio-group">
-                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
-                                    <div class="radio-option <?= $criteria['class'] ?>">
-                                        <input type="radio"
-                                               name="scores[<?= $indicator_key ?>][cdoh]"
-                                               value="<?= $score ?>"
-                                               id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
-                                               data-section="<?= $key ?>"
-                                               onchange="updateProgress()">
-                                        <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
-                                            <span class="score"><?= $score ?></span>
-                                            <span class="label"><?= $score == 4 ? 'Fully' : ($score == 3 ? 'Partial' : ($score == 2 ? 'Some' : ($score == 1 ? 'Minimal' : 'None'))) ?></span>
-                                        </label>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-
-                            <!-- IP Score Column (only if section has_ip is true) -->
-                            <?php if ($section['has_ip']): ?>
+                        <?php if ($is_ip_only): ?>
+                        <!-- IP score only (A-type indicators) -->
+                        <div class="score-grid" style="grid-template-columns:1fr;">
                             <div class="score-column ip">
-                                <h4><i class="fas fa-handshake"></i> Implementing Partner</h4>
+                                <h4><i class="fas fa-handshake"></i> IP Involvement Score</h4>
                                 <div class="radio-group">
                                     <?php foreach ($scoring_criteria as $score => $criteria): ?>
                                     <div class="radio-option <?= $criteria['class'] ?>">
@@ -1390,28 +1659,156 @@ foreach ($active_sections as $section) {
                                                value="<?= $score ?>"
                                                id="ip_<?= $indicator_key ?>_<?= $score ?>"
                                                data-section="<?= $key ?>"
-                                               onchange="updateProgress()">
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['ip_score']) && $ex['ip_score'] !== null && (string)$ex['ip_score'] === (string)$score ? 'checked' : '' ?>>
                                         <label for="ip_<?= $indicator_key ?>_<?= $score ?>">
                                             <span class="score"><?= $score ?></span>
-                                            <span class="label"><?= $score == 4 ? 'Dominates' : ($score == 3 ? 'Support' : ($score == 2 ? 'Involved' : ($score == 1 ? 'Partial' : 'None'))) ?></span>
+                                            <span class="label"><?= $labels_ip[$score] ?></span>
                                         </label>
                                     </div>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
-                            <?php endif; ?>
                         </div>
+
+                        <?php elseif ($is_cdoh_b || $is_planning): ?>
+                        <!-- CDOH score only, autonomy labels (B-type + T3) -->
+                        <div class="score-grid" style="grid-template-columns:1fr;">
+                            <div class="score-column cdoh">
+                                <h4><i class="fas fa-building"></i> CDOH Autonomy Score</h4>
+                                <div class="radio-group">
+                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
+                                    <div class="radio-option <?= $criteria['class'] ?>">
+                                        <input type="radio"
+                                               name="scores[<?= $indicator_key ?>][cdoh]"
+                                               value="<?= $score ?>"
+                                               id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
+                                               data-section="<?= $key ?>"
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['cdoh_score']) && (string)$ex['cdoh_score'] === (string)$score ? 'checked' : '' ?>>
+                                        <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
+                                            <span class="score"><?= $score ?></span>
+                                            <span class="label"><?= $labels_autonomy[$score] ?></span>
+                                        </label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php elseif ($is_leadership): ?>
+                        <!-- CDOH score only, adequacy labels (T1, T2) -->
+                        <div class="score-grid" style="grid-template-columns:1fr;">
+                            <div class="score-column cdoh">
+                                <h4><i class="fas fa-building"></i> CDOH Score</h4>
+                                <div class="radio-group">
+                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
+                                    <div class="radio-option <?= $criteria['class'] ?>">
+                                        <input type="radio"
+                                               name="scores[<?= $indicator_key ?>][cdoh]"
+                                               value="<?= $score ?>"
+                                               id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
+                                               data-section="<?= $key ?>"
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['cdoh_score']) && (string)$ex['cdoh_score'] === (string)$score ? 'checked' : '' ?>>
+                                        <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
+                                            <span class="score"><?= $score ?></span>
+                                            <span class="label"><?= $labels_adequacy[$score] ?></span>
+                                        </label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php elseif ($is_io): ?>
+                        <!-- IO: both CDOH and IP with component labels -->
+                        <div class="score-grid">
+                            <div class="score-column cdoh">
+                                <h4><i class="fas fa-building"></i> CDOH Score</h4>
+                                <div class="radio-group">
+                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
+                                    <div class="radio-option <?= $criteria['class'] ?>">
+                                        <input type="radio"
+                                               name="scores[<?= $indicator_key ?>][cdoh]"
+                                               value="<?= $score ?>"
+                                               id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
+                                               data-section="<?= $key ?>"
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['cdoh_score']) && (string)$ex['cdoh_score'] === (string)$score ? 'checked' : '' ?>>
+                                        <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
+                                            <span class="score"><?= $score ?></span>
+                                            <span class="label"><?= $labels_io[$score] ?></span>
+                                        </label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <div class="score-column ip">
+                                <h4><i class="fas fa-handshake"></i> IP Score</h4>
+                                <div class="radio-group">
+                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
+                                    <div class="radio-option <?= $criteria['class'] ?>">
+                                        <input type="radio"
+                                               name="scores[<?= $indicator_key ?>][ip]"
+                                               value="<?= $score ?>"
+                                               id="ip_<?= $indicator_key ?>_<?= $score ?>"
+                                               data-section="<?= $key ?>"
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['ip_score']) && $ex['ip_score'] !== null && (string)$ex['ip_score'] === (string)$score ? 'checked' : '' ?>>
+                                        <label for="ip_<?= $indicator_key ?>_<?= $score ?>">
+                                            <span class="score"><?= $score ?></span>
+                                            <span class="label"><?= $labels_io[$score] ?></span>
+                                        </label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php else: ?>
+                        <!-- Fallback: CDOH only, adequacy labels -->
+                        <div class="score-grid" style="grid-template-columns:1fr;">
+                            <div class="score-column cdoh">
+                                <h4><i class="fas fa-building"></i> CDOH Score</h4>
+                                <div class="radio-group">
+                                    <?php foreach ($scoring_criteria as $score => $criteria): ?>
+                                    <div class="radio-option <?= $criteria['class'] ?>">
+                                        <input type="radio"
+                                               name="scores[<?= $indicator_key ?>][cdoh]"
+                                               value="<?= $score ?>"
+                                               id="cdoh_<?= $indicator_key ?>_<?= $score ?>"
+                                               data-section="<?= $key ?>"
+                                               onchange="updateProgress()"
+                                               <?= isset($ex['cdoh_score']) && (string)$ex['cdoh_score'] === (string)$score ? 'checked' : '' ?>>
+                                        <label for="cdoh_<?= $indicator_key ?>_<?= $score ?>">
+                                            <span class="score"><?= $score ?></span>
+                                            <span class="label"><?= $labels_adequacy[$score] ?></span>
+                                        </label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <!-- Comments Section -->
                         <div class="comments-section">
                             <textarea name="scores[<?= $indicator_key ?>][comments]"
                                       placeholder="Add comments or verification notes for this indicator..."
-                                      rows="2"></textarea>
+                                      rows="2"><?= htmlspecialchars($ex['comments'] ?? '') ?></textarea>
                         </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php endforeach; ?>
+
+                <!-- Save This Section button -->
+                <div class="section-actions">
+                    <button type="button" class="btn-save-section" onclick="saveSection('<?= $key ?>')">
+                        <i class="fas fa-save"></i> Save This Section
+                    </button>
+                </div>
             </div>
             <?php endforeach; ?>
         </div>
@@ -1429,64 +1826,111 @@ foreach ($active_sections as $section) {
     </div>
 </div>
 
+<!-- Already-submitted modal -->
+<div class="modal-overlay" id="sectionModal">
+    <div class="modal-box">
+        <div class="modal-icon">??</div>
+        <h3>Section Already Submitted</h3>
+        <p>This section has already been filled for:</p>
+        <div class="modal-info">
+            <strong>County:</strong> <?= htmlspecialchars($county_name) ?><br>
+            <strong>Period:</strong> <?= htmlspecialchars($period) ?><br>
+            <strong>Submitted:</strong> <span id="modalDate">?</span><br>
+            <strong>Indicators scored:</strong> <span id="modalCount">?</span><br>
+            <strong>CDOH Score:</strong> <span id="modalCdoh">?</span>
+        </div>
+        <p>Would you like to <strong>fill another sheet</strong> (update this section)?</p>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-yes" onclick="proceedToSection()">
+                <i class="fas fa-edit"></i> Yes, Fill Again
+            </button>
+            <button class="modal-btn modal-btn-no" onclick="closeModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentSection = '<?= array_key_first($active_sections) ?>';
 let sectionKeys = <?= json_encode(array_keys($active_sections)) ?>;
 let autoSaveTimer;
 let totalIndicators = <?= $total_indicators ?>;
+let globalAssessmentId = <?= $assessment_id_js ?>;
+let submittedSections = <?= $submitted_sections_json ?>;
+let pendingSection = null;
 
+// -- Tab click: intercept if section already submitted -------------------------
+function handleTabClick(sectionKey) {
+    if (sectionKey === currentSection) return;
+
+    if (submittedSections[sectionKey]) {
+        const s = submittedSections[sectionKey];
+        document.getElementById('modalDate').textContent  = s.submitted_at || '?';
+        document.getElementById('modalCount').textContent = s.sub_count    || '?';
+        const cdohPct = s.avg_cdoh !== null ? Math.round(s.avg_cdoh / 4 * 100) + '%' : '?';
+        document.getElementById('modalCdoh').textContent  = cdohPct;
+        pendingSection = sectionKey;
+        document.getElementById('sectionModal').classList.add('show');
+    } else {
+        showSection(sectionKey);
+    }
+}
+
+function proceedToSection() {
+    closeModal();
+    if (pendingSection) {
+        showSection(pendingSection);
+        pendingSection = null;
+    }
+}
+
+function closeModal() {
+    document.getElementById('sectionModal').classList.remove('show');
+}
+
+// Close on overlay click
+document.getElementById('sectionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// -- Show a section ------------------------------------------------------------
 function showSection(sectionKey) {
-    // Hide all forms
     document.querySelectorAll('.assessment-form').forEach(form => {
         form.style.display = 'none';
     });
-
-    // Show selected form
     document.getElementById('form_' + sectionKey).style.display = 'block';
 
-    // Update tabs
     document.querySelectorAll('.section-tab').forEach(tab => {
         tab.classList.remove('active');
-        if (tab.dataset.section === sectionKey) {
-            tab.classList.add('active');
-        }
+        if (tab.dataset.section === sectionKey) tab.classList.add('active');
     });
 
     currentSection = sectionKey;
     updateSectionProgress(sectionKey);
 }
 
+// -- Progress tracking ---------------------------------------------------------
 function updateProgress() {
-    let totalScored = 0;
+    let totalScored   = 0;
     let totalPossible = 0;
 
-    // Count all radio buttons that should be scored (each sub-indicator has 1 or 2 score columns)
     document.querySelectorAll('.sub-indicator').forEach(subIndicator => {
         const cdohRadios = subIndicator.querySelectorAll('.score-column.cdoh input[type="radio"]');
-        const ipRadios = subIndicator.querySelectorAll('.score-column.ip input[type="radio"]');
-
+        const ipRadios   = subIndicator.querySelectorAll('.score-column.ip input[type="radio"]');
         if (cdohRadios.length > 0) totalPossible++;
-        if (ipRadios.length > 0) totalPossible++;
+        if (ipRadios.length   > 0) totalPossible++;
     });
 
-    // Count checked radio buttons
-    document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
-        totalScored++;
-    });
+    document.querySelectorAll('input[type="radio"]:checked').forEach(() => totalScored++);
 
     let percent = totalPossible > 0 ? Math.round((totalScored / totalPossible) * 100) : 0;
+    document.getElementById('overallProgress').style.width  = percent + '%';
+    document.getElementById('progressPercent').textContent  = percent + '%';
+    document.getElementById('completionBadge').textContent  = percent + '% complete';
 
-    // Update overall progress
-    document.getElementById('overallProgress').style.width = percent + '%';
-    document.getElementById('progressPercent').textContent = percent + '%';
-    document.getElementById('completionBadge').textContent = percent + '% complete';
+    sectionKeys.forEach(section => updateSectionProgress(section));
 
-    // Update section-specific progress
-    sectionKeys.forEach(section => {
-        updateSectionProgress(section);
-    });
-
-    // Trigger auto-save
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(autoSave, 3000);
     document.getElementById('saveStatus').textContent = 'Saving...';
@@ -1497,68 +1941,140 @@ function updateSectionProgress(sectionKey) {
     const sectionForm = document.getElementById('form_' + sectionKey);
     if (!sectionForm) return;
 
-    const sectionRadios = sectionForm.querySelectorAll('input[type="radio"]');
-    const totalSectionRadios = sectionRadios.length;
+    const sectionRadios        = sectionForm.querySelectorAll('input[type="radio"]');
+    const totalSectionRadios   = sectionRadios.length;
     const checkedSectionRadios = sectionForm.querySelectorAll('input[type="radio"]:checked').length;
-
-    let sectionPercent = totalSectionRadios > 0 ? Math.round((checkedSectionRadios / totalSectionRadios) * 100) : 0;
+    let   sectionPercent = totalSectionRadios > 0
+        ? Math.round((checkedSectionRadios / totalSectionRadios) * 100) : 0;
 
     const progressSpan = document.getElementById('section_progress_' + sectionKey);
     if (progressSpan) {
         progressSpan.textContent = sectionPercent + '% Complete';
-
-        // Mark tab as completed if section is 100% done
         const tab = document.querySelector(`.section-tab[data-section="${sectionKey}"]`);
-        if (tab) {
-            if (sectionPercent === 100) {
-                tab.classList.add('completed');
-            } else {
-                tab.classList.remove('completed');
-            }
-        }
+        if (tab) tab.classList.toggle('completed', sectionPercent === 100);
     }
 }
 
 function autoSave() {
-    // Collect form data
-    let formData = new FormData(document.getElementById('assessmentForm'));
-
-    // In a real implementation, you would send this to the server via AJAX
-    console.log('Auto-saving...', Object.fromEntries(formData));
-
     document.getElementById('saveStatus').textContent = 'All changes saved';
     document.getElementById('saveSpinner').style.display = 'none';
 }
 
-// Navigation between sections with keyboard
+// -- AJAX: Save a single section -----------------------------------------------
+function saveSection(sectionKey) {
+    const form = document.getElementById('form_' + sectionKey);
+    if (!form) return;
+
+    const btn = form.querySelector('.btn-save-section');
+    btn.classList.add('saving');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving?';
+    document.getElementById('saveStatus').textContent = 'Saving section?';
+    document.getElementById('saveSpinner').style.display = 'inline-block';
+
+    // Build FormData from just this section's radios + textareas
+    const fd = new FormData();
+    fd.append('save_section', '1');
+    fd.append('section_key', sectionKey);
+    fd.append('assessment_date', '<?= date('Y-m-d') ?>');
+    fd.append('county_id', '<?= $county_id ?>');
+    fd.append('period', '<?= addslashes($period) ?>');
+    fd.append('assessment_id', globalAssessmentId);
+
+    // Collect all radio + textarea inputs from this section form
+    form.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+        fd.append(radio.name, radio.value);
+    });
+    form.querySelectorAll('textarea').forEach(ta => {
+        fd.append(ta.name, ta.value);
+    });
+
+    const url = window.location.pathname
+        + '?county=<?= $county_id ?>'
+        + '&period=<?= urlencode($period) ?>'
+        + '&sections=<?= implode(',', $sections) ?>';
+
+    fetch(url, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            btn.classList.remove('saving');
+            if (data.success) {
+                // Store new assessment_id globally
+                globalAssessmentId = data.assessment_id;
+
+                // Update submitted sections registry
+                const now = new Date();
+                const fmt = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
+                    + ' ' + now.toTimeString().slice(0,5);
+                submittedSections[sectionKey] = {
+                    submitted_at : fmt,
+                    sub_count    : data.saved,
+                    avg_cdoh     : data.avg_cdoh_pct * 4 / 100
+                };
+
+                // Update the submitted tag inside the section header
+                const tag = document.getElementById('stag_' + sectionKey);
+                if (tag) {
+                    tag.style.display = '';
+                    tag.innerHTML = `<i class="fas fa-check-circle"></i> Submitted ${fmt}`
+                        + ` &nbsp;?&nbsp; ${data.saved} indicators`
+                        + (data.avg_cdoh_pct ? ` &nbsp;?&nbsp; CDOH: ${data.avg_cdoh_pct}%` : '');
+                }
+
+                // Mark tab as completed
+                const tab = document.querySelector(`.section-tab[data-section="${sectionKey}"]`);
+                if (tab) tab.classList.add('completed');
+
+                btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                document.getElementById('saveStatus').textContent = 'Section saved ?';
+                document.getElementById('saveSpinner').style.display = 'none';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-save"></i> Save This Section';
+                }, 2500);
+            } else {
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error ? Retry';
+                document.getElementById('saveStatus').textContent = 'Error: ' + (data.error || 'unknown');
+                document.getElementById('saveSpinner').style.display = 'none';
+            }
+        })
+        .catch(err => {
+            btn.classList.remove('saving');
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Network Error';
+            document.getElementById('saveStatus').textContent = 'Network error';
+            document.getElementById('saveSpinner').style.display = 'none';
+            console.error(err);
+        });
+}
+
+// -- Keyboard nav --------------------------------------------------------------
 document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.key === 'ArrowRight') {
         e.preventDefault();
-        let currentIndex = sectionKeys.indexOf(currentSection);
-        if (currentIndex < sectionKeys.length - 1) {
-            showSection(sectionKeys[currentIndex + 1]);
-        }
+        let i = sectionKeys.indexOf(currentSection);
+        if (i < sectionKeys.length - 1) handleTabClick(sectionKeys[i + 1]);
     } else if (e.ctrlKey && e.key === 'ArrowLeft') {
         e.preventDefault();
-        let currentIndex = sectionKeys.indexOf(currentSection);
-        if (currentIndex > 0) {
-            showSection(sectionKeys[currentIndex - 1]);
-        }
+        let i = sectionKeys.indexOf(currentSection);
+        if (i > 0) handleTabClick(sectionKeys[i - 1]);
     }
 });
 
-// Initialize on load
+// -- Init ----------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function() {
     showSection(currentSection);
     updateProgress();
+
+    // Mark already-submitted tabs with completed class on load
+    Object.keys(submittedSections).forEach(k => {
+        const tab = document.querySelector(`.section-tab[data-section="${k}"]`);
+        if (tab) tab.classList.add('completed');
+    });
 });
 
-// Form validation before submit
+// Form validation before full submit
 document.getElementById('assessmentForm').addEventListener('submit', function(e) {
-    const totalRadios = document.querySelectorAll('.sub-indicator').length * 2; // Approximate
+    const totalRadios   = document.querySelectorAll('.sub-indicator').length * 2;
     const checkedRadios = document.querySelectorAll('input[type="radio"]:checked').length;
-
-    if (checkedRadios < totalRadios * 0.5) { // Less than 50% complete
+    if (checkedRadios < totalRadios * 0.5) {
         if (!confirm('You have completed less than 50% of the indicators. Are you sure you want to submit?')) {
             e.preventDefault();
         }

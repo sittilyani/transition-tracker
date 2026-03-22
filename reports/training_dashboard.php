@@ -9,8 +9,8 @@ $total_staff_trained = 0;
 $total_facilities = 0;
 $total_courses = 0;
 
-// Get count from staff_self_trainings (only verified)
-$self_count = $conn->query("SELECT COUNT(*) as count FROM staff_self_trainings WHERE status = 'verified'");
+// Get count from staff_self_trainings (only verified and submitted)
+$self_count = $conn->query("SELECT COUNT(*) as count FROM staff_self_trainings WHERE status IN ('verified', 'submitted')");
 if ($self_count) {
     $total_self_trainings = $self_count->fetch_assoc()['count'];
 }
@@ -24,7 +24,7 @@ if ($session_count) {
 // Get unique staff count (union of both tables)
 $staff_count = $conn->query("
     SELECT COUNT(DISTINCT id_number) as count FROM (
-        SELECT id_number FROM staff_self_trainings WHERE status = 'verified'
+        SELECT id_number FROM staff_self_trainings WHERE status IN ('verified', 'submitted')
         UNION
         SELECT id_number FROM staff_trainings
     ) as combined_staff

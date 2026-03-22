@@ -26,6 +26,45 @@ $assessment = mysqli_fetch_assoc($result);
 
 // Get EMR systems
 $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_systems WHERE assessment_id = $id ORDER BY sort_order");
+
+function s($v,$m){return $m[$v]??1;}
+
+$lead = s($assessment['leadership_commitment'],['High'=>3,'Moderate'=>2,'Low'=>1]);
+$plan = s($assessment['transition_plan'],['Yes - Implemented'=>3,'Yes - Not Implemented'=>2,'No'=>1]);
+$awp = s($assessment['hiv_in_awp'],['Fully'=>3,'Partially'=>2,'No'=>1]);
+
+$hrh = s($assessment['hrh_gap'],['0-10%'=>3,'10-30%'=>2,'>30%'=>1]);
+$multi = s($assessment['staff_multiskilled'],['Yes'=>3,'Partial'=>2,'No'=>1]);
+$rov = s($assessment['roving_staff'],['Yes - Regular'=>3,'Yes - Irregular'=>2,'No'=>1]);
+
+$infra = s($assessment['infrastructure_capacity'],['Adequate'=>3,'Minor changes needed'=>2,'Major redesign needed'=>1]);
+$space = s($assessment['space_adequacy'],['Adequate'=>3,'Congested'=>2,'Severely Inadequate'=>1]);
+
+$serv = s($assessment['service_delivery_without_ccc'],['Yes'=>3,'Partially'=>2,'No'=>1]);
+$wait = s($assessment['avg_wait_time'],['<1 hour'=>3,'1-3 hours'=>2,'>3 hours'=>1]);
+
+$data = s($assessment['data_integration_level'],['Fully Integrated'=>3,'Partial'=>2,'Fragmented'=>1]);
+$fin = s($assessment['financing_coverage'],['High'=>3,'Moderate'=>2,'Low'=>1]);
+
+$total =
+(($lead+$plan+$awp)/9*100)*0.15 +
+(($hrh+$multi+$rov)/9*100)*0.20 +
+(($infra+$space)/6*100)*0.10 +
+(($serv+$wait)/6*100)*0.25 +
+(($data/3)*100)*0.15 +
+(($fin/3)*100)*0.15;
+
+if($total>=80){$cat='Fully Ready';$clr='success';}
+elseif($total>=60){$cat='Moderately Ready';$clr='warning';}
+elseif($total>=40){$cat='Low Readiness';$clr='orange';}
+else{$cat='Not Ready';$clr='danger';}
+
+$rec=[];
+if($hrh<2)$rec[]='Use Hub-Spoke Model';
+if($serv<2)$rec[]='Implement DSD (MMD)';
+if($infra<2)$rec[]='Improve infrastructure';
+if($lead<2)$rec[]='Strengthen leadership';
+if(empty($rec))$rec[]='Proceed with full integration';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -158,6 +197,13 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
         .badge-warning { background: #fff3cd; color: #856404; }
         .badge-danger { background: #f8d7da; color: #721c24; }
         .badge-info { background: #d1ecf1; color: #0c5460; }
+        .badge-success{background:#28a745;color:#fff;padding:5px 10px;border-radius:6px;}
+.badge-warning{background:#ffc107;color:#000;padding:5px 10px;border-radius:6px;}
+.badge-danger{background:#dc3545;color:#fff;padding:5px 10px;border-radius:6px;}
+.badge-orange{background:#fd7e14;color:#fff;padding:5px 10px;border-radius:6px;}
+
+.progress{height:8px;background:#eee;border-radius:5px;}
+.progress-bar{height:100%;border-radius:5px;}
 
         table {
             width: 100%;
@@ -219,25 +265,62 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
     <div class="back-link">
         <a href="integration_assessment_list.php"><i class="fas fa-arrow-left"></i> Back to List</a>
     </div>
+    <div class="card">
+        <div class="card-head"><i class="fas fa-chart-line"></i> Integration Score</div>
+            <div class="card-body">
 
+                <h2><?= round($total) ?>%</h2>
+                <span class="badge badge-<?= $clr ?>"><?= $cat ?></span>
+
+                <div class="progress" style="margin-top:10px;">
+                    <div class="progress-bar bg-<?= $clr ?>" style="width:<?= $total ?>%"></div>
+                </div>
+
+            </div>
+        </div>
+        <div class="card">
+        <div class="card-head"><i class="fas fa-lightbulb"></i> Recommendations</div>
+        <div class="card-body">
+            <ul>
+                <?php foreach($rec as $r): ?>
+                    <li><?= $r ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+    <div class="card">
+    <div class="card-head">Integration Readiness</div>
+    <div class="card-body">
+    <div class="info-grid">
+
+    <div class="info-item"><label>Leadership</label><span><?= $assessment['leadership_commitment'] ?></span></div>
+    <div class="info-item"><label>HR Gap</label><span><?= $assessment['hrh_gap'] ?></span></div>
+    <div class="info-item"><label>Roving Staff</label><span><?= $assessment['roving_staff'] ?></span></div>
+    <div class="info-item"><label>Infrastructure</label><span><?= $assessment['infrastructure_capacity'] ?></span></div>
+    <div class="info-item"><label>Data</label><span><?= $assessment['data_integration_level'] ?></span></div>
+    <div class="info-item"><label>Finance</label><span><?= $assessment['financing_coverage'] ?></span></div>
+
+    </div>
+    </div>
+    </div>
     <!-- Facility Info -->
     <div class="card">
         <div class="card-head"><i class="fas fa-hospital"></i> Facility Information</div>
         <div class="card-body">
             <div class="info-grid">
-                <div class="info-item"><label>Assessment Period</label><span><?= htmlspecialchars($assessment['assessment_period'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Facility Name</label><span><?= htmlspecialchars($assessment['facility_name'] ?? '—') ?></span></div>
-                <div class="info-item"><label>MFL Code</label><span><?= htmlspecialchars($assessment['mflcode'] ?? '—') ?></span></div>
-                <div class="info-item"><label>County</label><span><?= htmlspecialchars($assessment['county_name'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Sub-County</label><span><?= htmlspecialchars($assessment['subcounty_name'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Level of Care</label><span><?= htmlspecialchars($assessment['level_of_care_name'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Owner</label><span><?= htmlspecialchars($assessment['owner'] ?? '—') ?></span></div>
-                <div class="info-item"><label>SDP</label><span><?= htmlspecialchars($assessment['sdp'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Agency</label><span><?= htmlspecialchars($assessment['agency'] ?? '—') ?></span></div>
-                <div class="info-item"><label>EMR</label><span><?= htmlspecialchars($assessment['emr'] ?? '—') ?></span></div>
-                <div class="info-item"><label>EMR Status</label><span><?= htmlspecialchars($assessment['emrstatus'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Infrastructure</label><span><?= htmlspecialchars($assessment['infrastructuretype'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Coordinates</label><span><?= ($assessment['latitude'] && $assessment['longitude']) ? $assessment['latitude'] . ', ' . $assessment['longitude'] : '—' ?></span></div>
+                <div class="info-item"><label>Assessment Period</label><span><?= htmlspecialchars($assessment['assessment_period'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Facility Name</label><span><?= htmlspecialchars($assessment['facility_name'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>MFL Code</label><span><?= htmlspecialchars($assessment['mflcode'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>County</label><span><?= htmlspecialchars($assessment['county_name'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Sub-County</label><span><?= htmlspecialchars($assessment['subcounty_name'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Level of Care</label><span><?= htmlspecialchars($assessment['level_of_care_name'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Owner</label><span><?= htmlspecialchars($assessment['owner'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>SDP</label><span><?= htmlspecialchars($assessment['sdp'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Agency</label><span><?= htmlspecialchars($assessment['agency'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>EMR</label><span><?= htmlspecialchars($assessment['emr'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>EMR Status</label><span><?= htmlspecialchars($assessment['emrstatus'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Infrastructure</label><span><?= htmlspecialchars($assessment['infrastructuretype'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Coordinates</label><span><?= ($assessment['latitude'] && $assessment['longitude']) ? $assessment['latitude'] . ', ' . $assessment['longitude'] : 'ï¿½' ?></span></div>
             </div>
         </div>
     </div>
@@ -247,10 +330,10 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
         <div class="card-head"><i class="fas fa-virus"></i> HIV/TB Services</div>
         <div class="card-body">
             <div class="info-grid">
-                <div class="info-item"><label>US DoS IP Supported</label><span class="badge <?= $assessment['supported_by_usdos_ip'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['supported_by_usdos_ip'] ?? '—') ?></span></div>
-                <div class="info-item"><label>ART Site</label><span class="badge <?= $assessment['is_art_site'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['is_art_site'] ?? '—') ?></span></div>
-                <div class="info-item"><label>HIV/TB Integrated</label><span class="badge <?= $assessment['hiv_tb_integrated'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['hiv_tb_integrated'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Integration Model</label><span><?= htmlspecialchars($assessment['hiv_tb_integration_model'] ?? '—') ?></span></div>
+                <div class="info-item"><label>US DoS IP Supported</label><span class="badge <?= $assessment['supported_by_usdos_ip'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['supported_by_usdos_ip'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>ART Site</label><span class="badge <?= $assessment['is_art_site'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['is_art_site'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>HIV/TB Integrated</label><span class="badge <?= $assessment['hiv_tb_integrated'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['hiv_tb_integrated'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Integration Model</label><span><?= htmlspecialchars($assessment['hiv_tb_integration_model'] ?? 'ï¿½') ?></span></div>
                 <div class="info-item"><label>TX_CURR</label><span><?= number_format($assessment['tx_curr'] ?? 0) ?></span></div>
                 <div class="info-item"><label>TX_CURR PMTCT</label><span><?= number_format($assessment['tx_curr_pmtct'] ?? 0) ?></span></div>
                 <div class="info-item"><label>PLHIV Integrated Care</label><span><?= number_format($assessment['plhiv_integrated_care'] ?? 0) ?></span></div>
@@ -278,7 +361,7 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
                 <div class="info-item">
                     <label><?= $label ?></label>
                     <span class="badge <?= $value == 'Yes' ? 'badge-success' : ($value == 'No' ? 'badge-danger' : 'badge-info') ?>">
-                        <?= htmlspecialchars($value ?? '—') ?>
+                        <?= htmlspecialchars($value ?? 'ï¿½') ?>
                     </span>
                 </div>
                 <?php endforeach; ?>
@@ -291,8 +374,8 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
         <div class="card-head"><i class="fas fa-laptop-medical"></i> EMR Integration</div>
         <div class="card-body">
             <div class="info-grid">
-                <div class="info-item"><label>Uses EMR</label><span class="badge <?= $assessment['uses_emr'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['uses_emr'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Single Unified EMR</label><span class="badge <?= $assessment['single_unified_emr'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['single_unified_emr'] ?? '—') ?></span></div>
+                <div class="info-item"><label>Uses EMR</label><span class="badge <?= $assessment['uses_emr'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['uses_emr'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Single Unified EMR</label><span class="badge <?= $assessment['single_unified_emr'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['single_unified_emr'] ?? 'ï¿½') ?></span></div>
             </div>
 
             <?php if ($assessment['uses_emr'] == 'Yes' && mysqli_num_rows($emr_systems) > 0): ?>
@@ -311,8 +394,8 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
                     <tr>
                         <td><?= $i++ ?></td>
                         <td><?= htmlspecialchars($emr['emr_type']) ?></td>
-                        <td><?= htmlspecialchars($emr['funded_by'] ?? '—') ?></td>
-                        <td><?= $emr['date_started'] ? date('d M Y', strtotime($emr['date_started'])) : '—' ?></td>
+                        <td><?= htmlspecialchars($emr['funded_by'] ?? 'ï¿½') ?></td>
+                        <td><?= $emr['date_started'] ? date('d M Y', strtotime($emr['date_started'])) : 'ï¿½' ?></td>
                     </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -353,10 +436,10 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
             </div>
 
             <div class="info-grid" style="margin-top:16px">
-                <div class="info-item"><label>Lab Manifest</label><span class="badge <?= $assessment['lab_manifest_in_use'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['lab_manifest_in_use'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Tibu Lite</label><span class="badge <?= $assessment['tibu_lite_lims_in_use'] == 'Yes' ? 'badge-success' : ($assessment['tibu_lite_lims_in_use'] == 'Partial' ? 'badge-warning' : 'badge-danger') ?>"><?= htmlspecialchars($assessment['tibu_lite_lims_in_use'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Pharmacy WebADT</label><span class="badge <?= $assessment['pharmacy_webadt_in_use'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['pharmacy_webadt_in_use'] ?? '—') ?></span></div>
-                <div class="info-item"><label>EMR Interoperable</label><span class="badge <?= $assessment['emr_interoperable_his'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['emr_interoperable_his'] ?? '—') ?></span></div>
+                <div class="info-item"><label>Lab Manifest</label><span class="badge <?= $assessment['lab_manifest_in_use'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['lab_manifest_in_use'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Tibu Lite</label><span class="badge <?= $assessment['tibu_lite_lims_in_use'] == 'Yes' ? 'badge-success' : ($assessment['tibu_lite_lims_in_use'] == 'Partial' ? 'badge-warning' : 'badge-danger') ?>"><?= htmlspecialchars($assessment['tibu_lite_lims_in_use'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Pharmacy WebADT</label><span class="badge <?= $assessment['pharmacy_webadt_in_use'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['pharmacy_webadt_in_use'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>EMR Interoperable</label><span class="badge <?= $assessment['emr_interoperable_his'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['emr_interoperable_his'] ?? 'ï¿½') ?></span></div>
             </div>
         </div>
     </div>
@@ -396,8 +479,8 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
                 <div class="info-item"><label>PLHIVs Premium Paid</label><span><?= number_format($assessment['plhiv_sha_premium_paid'] ?? 0) ?></span></div>
                 <div class="info-item"><label>PBFW Enrolled</label><span><?= number_format($assessment['pbfw_enrolled_sha'] ?? 0) ?></span></div>
                 <div class="info-item"><label>PBFW Premium Paid</label><span><?= number_format($assessment['pbfw_sha_premium_paid'] ?? 0) ?></span></div>
-                <div class="info-item"><label>Claims Submitted On Time</label><span class="badge <?= $assessment['sha_claims_submitted_ontime'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_claims_submitted_ontime'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Reimbursements Monthly</label><span class="badge <?= $assessment['sha_reimbursements_monthly'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_reimbursements_monthly'] ?? '—') ?></span></div>
+                <div class="info-item"><label>Claims Submitted On Time</label><span class="badge <?= $assessment['sha_claims_submitted_ontime'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_claims_submitted_ontime'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Reimbursements Monthly</label><span class="badge <?= $assessment['sha_reimbursements_monthly'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_reimbursements_monthly'] ?? 'ï¿½') ?></span></div>
             </div>
         </div>
     </div>
@@ -409,9 +492,9 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
             <div class="info-grid">
                 <div class="info-item"><label>TA Visits Total</label><span><?= number_format($assessment['ta_visits_total'] ?? 0) ?></span></div>
                 <div class="info-item"><label>TA Visits MOH Only</label><span><?= number_format($assessment['ta_visits_moh_only'] ?? 0) ?></span></div>
-                <div class="info-item"><label>FIF Collection in Place</label><span class="badge <?= $assessment['fif_collection_in_place'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['fif_collection_in_place'] ?? '—') ?></span></div>
-                <div class="info-item"><label>FIF Includes HIV/TB</label><span class="badge <?= $assessment['fif_includes_hiv_tb_pmtct'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['fif_includes_hiv_tb_pmtct'] ?? '—') ?></span></div>
-                <div class="info-item"><label>SHA Capitation</label><span class="badge <?= $assessment['sha_capitation_hiv_tb'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_capitation_hiv_tb'] ?? '—') ?></span></div>
+                <div class="info-item"><label>FIF Collection in Place</label><span class="badge <?= $assessment['fif_collection_in_place'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['fif_collection_in_place'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>FIF Includes HIV/TB</label><span class="badge <?= $assessment['fif_includes_hiv_tb_pmtct'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['fif_includes_hiv_tb_pmtct'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>SHA Capitation</label><span class="badge <?= $assessment['sha_capitation_hiv_tb'] == 'Yes' ? 'badge-success' : 'badge-danger' ?>"><?= htmlspecialchars($assessment['sha_capitation_hiv_tb'] ?? 'ï¿½') ?></span></div>
             </div>
         </div>
     </div>
@@ -431,15 +514,49 @@ $emr_systems = mysqli_query($conn, "SELECT * FROM integration_assessment_emr_sys
         </div>
     </div>
 
+    <!-- Section 8: Integration Readiness -->
+<div class="card">
+    <div class="card-head"><i class="fas fa-project-diagram"></i> Integration Readiness</div>
+    <div class="card-body">
+
+        <div class="info-grid">
+            <div class="info-item"><label>Leadership Commitment</label><span><?= $assessment['leadership_commitment'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Transition Plan</label><span><?= $assessment['transition_plan'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>HIV in AWP</label><span><?= $assessment['hiv_in_awp'] ?? 'â€”' ?></span></div>
+
+            <div class="info-item"><label>HRH Gap</label><span><?= $assessment['hrh_gap'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Multi-skilled Staff</label><span><?= $assessment['staff_multiskilled'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Roving Staff</label><span><?= $assessment['roving_staff'] ?? 'â€”' ?></span></div>
+
+            <div class="info-item"><label>Infrastructure</label><span><?= $assessment['infrastructure_capacity'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Space</label><span><?= $assessment['space_adequacy'] ?? 'â€”' ?></span></div>
+
+            <div class="info-item"><label>Service without CCC</label><span><?= $assessment['service_delivery_without_ccc'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Waiting Time</label><span><?= $assessment['avg_wait_time'] ?? 'â€”' ?></span></div>
+
+            <div class="info-item"><label>Data Integration</label><span><?= $assessment['data_integration_level'] ?? 'â€”' ?></span></div>
+            <div class="info-item"><label>Financing</label><span><?= $assessment['financing_coverage'] ?? 'â€”' ?></span></div>
+
+            <div class="info-item"><label>Disruption Risk</label><span><?= $assessment['disruption_risk'] ?? 'â€”' ?></span></div>
+        </div>
+
+        <div class="info-item" style="margin-top:15px">
+            <label>Key Barriers</label>
+            <span><?= nl2br(htmlspecialchars($assessment['integration_barriers'] ?? 'â€”')) ?></span>
+        </div>
+
+    </div>
+</div>
+
     <!-- Admin -->
     <div class="card">
         <div class="card-head"><i class="fas fa-user-check"></i> Data Collection Details</div>
         <div class="card-body">
             <div class="info-grid">
-                <div class="info-item"><label>Collected By</label><span><?= htmlspecialchars($assessment['collected_by'] ?? '—') ?></span></div>
-                <div class="info-item"><label>Collection Date</label><span><?= $assessment['collection_date'] ? date('d M Y', strtotime($assessment['collection_date'])) : '—' ?></span></div>
-                <div class="info-item"><label>Created At</label><span><?= $assessment['created_at'] ? date('d M Y H:i', strtotime($assessment['created_at'])) : '—' ?></span></div>
-                <div class="info-item"><label>Last Updated</label><span><?= $assessment['updated_at'] ? date('d M Y H:i', strtotime($assessment['updated_at'])) : '—' ?></span></div>
+                <div class="info-item"><label>Collected By</label><span><?= htmlspecialchars($assessment['collected_by'] ?? 'ï¿½') ?></span></div>
+                <div class="info-item"><label>Collection Date</label><span><?= $assessment['collection_date'] ? date('d M Y', strtotime($assessment['collection_date'])) : 'ï¿½' ?></span></div>
+                <div class="info-item"><label>Created At</label><span><?= $assessment['created_at'] ? date('d M Y H:i', strtotime($assessment['created_at'])) : 'ï¿½' ?></span></div>
+                <div class="info-item"><label>Last Updated</label><span><?= $assessment['updated_at'] ? date('d M Y H:i', strtotime($assessment['updated_at'])) : 'ï¿½' ?></span></div>
             </div>
         </div>
     </div>

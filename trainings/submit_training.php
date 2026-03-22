@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subcounty     = trim($_POST['subcounty'] ?? '');
 
     // Staff
-    $staff_name        = trim($_POST['staff_name'] ?? '');
+    /*$staff_name        = trim($_POST['staff_name'] ?? '');  */
     $staff_department  = trim($_POST['department'] ?? '');
     $staff_designation = '';
     $staff_p_no        = trim($_POST['staff_p_no'] ?? '');
