@@ -218,7 +218,10 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 <div class="container">
 <div class="page-header">
     <h1><i class="fas fa-chart-bar"></i> Transition Assessment Dashboard</h1>
+
     <div class="hdr-links">
+        <a href="transition_ai_advisor.php?county=<?= $county_id ?>&period=<?= urlencode($period) ?>">
+        <i class="fas fa-robot"></i> AI Advisor</a>
         <a href="transition_comparison_dashboard.php"><i class="fas fa-code-branch"></i> Compare</a>
         <a href="transition_index.php"><i class="fas fa-plus"></i> New Assessment</a>
         <a href="transition_index.php"><i class="fas fa-home"></i> Home</a>

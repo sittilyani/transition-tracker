@@ -199,7 +199,7 @@ function showCountySelection($conn) {
 
         <div class="card">
             <h2><i class="fas fa-map-marker-alt"></i> Select County & Assessment</h2>
-            <form method="GET" action="workplan.php">
+            <form method="GET" action="transition_workplan.php">
                 <div class="filter-group">
                     <label>County:</label>
                     <select name="county" required>
@@ -245,7 +245,7 @@ function showCountySelection($conn) {
                     $readiness = $row['avg_score'] >= 70 ? 'Transition' : ($row['avg_score'] >= 50 ? 'Support and Monitor' : 'Not Ready');
                     $badge_class = $row['avg_score'] >= 70 ? 'badge-transition' : ($row['avg_score'] >= 50 ? 'badge-support' : 'badge-not-ready');
                     echo "
-                    <div class='assessment-item' onclick=\"window.location.href='workplan.php?county={$row['county_id']}&assessment_id={$row['assessment_id']}'\">
+                    <div class='assessment-item' onclick=\"window.location.href='transition_workplan.php?county={$row['county_id']}&assessment_id={$row['assessment_id']}'\">
                         <h3>{$row['county_name']}</h3>
                         <div class='date'><i class='fas fa-calendar'></i> {$row['assessment_period']}</div>
                         <div><span class='readiness-badge $badge_class'>{$readiness}</span></div>
@@ -781,7 +781,7 @@ function getWorkplanHTML($workplan) {
     <div class="container">
         <div class="page-header">
             <h1>Transition Workplan</h1>
-            <div class="subtitle">USAID-to-County Government Handover Plan</div>
+            <div class="subtitle">Implementing Partner-to-County Government Handover Plan</div>
             <div style="margin-top: 10px;"><?= htmlspecialchars($workplan['county']) ?> County | <?= htmlspecialchars($workplan['period']) ?></div>
         </div>
 
@@ -814,7 +814,7 @@ function getWorkplanHTML($workplan) {
             <div class="card-body">
                 <table class="timeline-table">
                     <thead>
-                        <tr><th>Section</th><th>CDOH Score</th><th>IP Score</th><th>Gap</th><th>Priority Level</th>
+                        <tr><th>Section</th><th>CDOH Score</th><th>IP Score</th><th>Gap</th><th>Priority Level</th> </tr>
                         </thead>
                     <tbody>
                         <?php foreach ($workplan['critical_sections'] as $section): ?>
@@ -876,7 +876,7 @@ function getWorkplanHTML($workplan) {
             <div class="card-body">
                 <table class="timeline-table">
                     <thead>
-                        <tr><th>Phase</th><th>Duration</th><th>Key Activities</th><th>Responsible Parties</th>
+                        <tr><th>Phase</th><th>Duration</th><th>Key Activities</th><th>Responsible Parties</th> </tr>
                         </thead>
                     <tbody>
                         <tr>
@@ -1052,7 +1052,7 @@ function showNoDataError() {
             <h2>No Assessment Data Found</h2>
             <p>No assessment data exists for the selected county and period. Please complete an assessment first.</p>
             <a href="transition_index.php" class="btn"><i class="fas fa-plus"></i> Start New Assessment</a>
-            <a href="workplan.php" class="btn" style="background: #6c757d; margin-left: 10px;"><i class="fas fa-arrow-left"></i> Go Back</a>
+            <a href="transition_workplan.php" class="btn" style="background: #6c757d; margin-left: 10px;"><i class="fas fa-arrow-left"></i> Go Back</a>
         </div>
     </body>
     </html>

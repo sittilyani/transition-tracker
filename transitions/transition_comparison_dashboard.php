@@ -205,7 +205,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 <body>
 <div class="container">
 <div class="page-header">
-    <h1><i class="fas fa-code-branch"></i> Transition Assessment — Comparison Dashboard</h1>
+    <h1><i class="fas fa-code-branch"></i> Transition Assessment  Comparison Dashboard</h1>
     <div class="hdr-links">
         <a href="transition_dashboard.php"><i class="fas fa-tachometer-alt"></i> Main Dashboard</a>
         <a href="transition_index.php"><i class="fas fa-plus"></i> New Assessment</a>
@@ -214,12 +214,12 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 
 <!-- Filters -->
 <div class="filters-card">
-    <div class="filters-title"><i class="fas fa-sliders-h"></i> Comparison Filters — select 2+ counties or 2+ periods to compare side-by-side</div>
+    <div class="filters-title"><i class="fas fa-sliders-h"></i> Comparison Filters  select 2+ counties or 2+ periods to compare side-by-side</div>
     <form method="GET">
         <div class="filters-grid">
             <div class="filter-group">
                 <label>Counties <span style="color:#0ABFBC">(multiselect)</span></label>
-                <select id="sel-counties" name="counties[]" multiple placeholder="Select counties…">
+                <select id="sel-counties" name="counties[]" multiple placeholder="Select counties">
                     <?php foreach($counties_list as $c): ?>
                     <option value="<?= $c['county_id'] ?>" <?= in_array($c['county_id'],$sel_counties)?'selected':'' ?>><?= htmlspecialchars($c['county_name']) ?></option>
                     <?php endforeach; ?>
@@ -228,7 +228,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
             </div>
             <div class="filter-group">
                 <label>Assessment Periods <span style="color:#0ABFBC">(multiselect)</span></label>
-                <select id="sel-periods" name="periods[]" multiple placeholder="Select periods…">
+                <select id="sel-periods" name="periods[]" multiple placeholder="Select periods">
                     <?php foreach($periods_list as $p): ?>
                     <option value="<?= htmlspecialchars($p) ?>" <?= in_array($p,$sel_periods)?'selected':'' ?>><?= htmlspecialchars($p) ?></option>
                     <?php endforeach; ?>
@@ -303,7 +303,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 </div>
 
 <!-- -- CDOH % grouped bar -------------------------------------------------- -->
-<div class="section-title"><i class="fas fa-chart-bar"></i> CDOH % per Section — Grouped</div>
+<div class="section-title"><i class="fas fa-chart-bar"></i> CDOH % per Section  Grouped</div>
 <div class="card">
     <div class="card-head">
         <h3><i class="fas fa-building"></i> County Autonomy (CDOH) by Section</h3>
@@ -317,7 +317,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 </div>
 
 <!-- -- IP % grouped bar ---------------------------------------------------- -->
-<div class="section-title"><i class="fas fa-chart-bar"></i> IP % per Section — Grouped</div>
+<div class="section-title"><i class="fas fa-chart-bar"></i> IP % per Section  Grouped</div>
 <div class="card">
     <div class="card-head">
         <h3><i class="fas fa-handshake"></i> IP Involvement by Section</h3>
@@ -346,7 +346,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
 <div class="section-title"><i class="fas fa-table"></i> Full Section Comparison Table</div>
 <div class="card">
     <div class="card-head">
-        <h3><i class="fas fa-list"></i> All Sections — <?= count($groups) ?>-Way Comparison</h3>
+        <h3><i class="fas fa-list"></i> All Sections  <?= count($groups) ?>-Way Comparison</h3>
     </div>
     <div style="overflow-x:auto">
         <table class="compare-table">
@@ -375,7 +375,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
                     <?php if(!$is_co && $s['ip_pct']!==null): ?>
                     <span style="color:#b8860b;font-weight:600;margin-left:4px">/ <?= $s['ip_pct'] ?>%</span>
                     <?php elseif(!$is_co): ?>
-                    <span style="color:#aaa;margin-left:4px">/ —</span>
+                    <span style="color:#aaa;margin-left:4px">/ </span>
                     <?php endif; ?>
                 </td>
                 <?php endforeach; ?>

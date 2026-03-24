@@ -305,7 +305,7 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../transitions/workplan.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../transitions/transition_workplan.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Transition Workplan
                         </a>

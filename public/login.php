@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - HPTU LMIS</title>
+    <title>Login - </title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ---------- RESET & GLOBAL ---------- */
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body {
             font-family: 'Segoe UI', 'Roboto', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #2c0b8e 0%, #3F10CB 100%);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
