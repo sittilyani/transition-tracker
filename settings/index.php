@@ -244,19 +244,19 @@
         </div>
          <div class="grid-item">
              <h4>Courses/Trainings</h4>
-             <ul><a href="../pages/add_drug_source.php">Add Academic Qualification</a></ul>
-             <ul><a href="../pages/sourcelist.php">Add Professional Body</a></ul>
-             <ul><a href="../views/viewstocks.php">Add Trainings</a></ul>
-             <ul><a href="../processors/adddrug.php">Add Training Type</a></ul>
-             <ul><a href="../processors/adddrug.php">Add Training Location</a></ul>
+             <ul><a href="add_qualification.php">Add Academic Qualification</a></ul>
+             <ul><a href="add_professional_body.php">Add Professional Body</a></ul>
+             <ul><a href="add_trainings.php">Add Trainings</a></ul>
+             <ul><a href="add_training_type.php">Add Training Type</a></ul>
+             <ul><a href="add_training_location.php">Add Training Location</a></ul>
          </div>
          <div class="grid-item">
              <h4>General</h4>
-             <ul><a href="../pages/add_county.php">Add Counties</a></ul>
-             <ul><a href="../pages/add_sub_county.php">Add Sub Counties</a> </ul>
-             <ul><a href="../pages/add_facility.php">Add Facility</a></ul>
-             <ul><a href="../pages/stock_movement2.php">Add Departments</a></ul>
-             <ul><a href="../processors/adddrug.php">Add Cadres</a></ul>
+             <ul><a href="add_county.php">Add Counties</a></ul>
+             <ul><a href="add_sub_county.php">Add Sub Counties</a> </ul>
+             <ul><a href="add_facility.php">Add Facility</a></ul>
+             <ul><a href="add_department.php">Add Departments</a></ul>
+             <ul><a href="add_cadre.php">Add Cadres</a></ul>
          </div>
       </div>
 

@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="login-container">
 
-        <img src="../assets/images/TaitaLogo.png" width="102" height="102" alt="">
+        <img src="../assets/images/Logo-round-nobg-2.png" width="102" height="102" alt="">
         <h2>Welcome Back</h2>
         <p style="color: #666; margin-bottom: 25px;">Please login to your account</p>
 
