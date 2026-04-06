@@ -503,7 +503,7 @@ ob_end_flush();
         </form>
 
         <div class="text-center mt-3">
-            <a href="../views/userslist.php" class="text-decoration-none">
+            <a href="../public/userslist.php" class="text-decoration-none">
                 Back to Users List
             </a>
         </div>

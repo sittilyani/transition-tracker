@@ -238,8 +238,8 @@
      <div class="grid-container">
         <div class="grid-item">
              <h4>Database and Users</h4>
-             <ul><a href="../backup/index.php">BackUp Database</a></ul>
-             <ul><a href="../views/userslist.php">Users' List'</a></ul>
+             <ul><a href="../backup/backup.php">BackUp Database</a></ul>
+             <ul><a href="../public/userslist.php">Users' List'</a></ul>
              <ul><a href="../public/user_registration.php">Register User</a></ul>
         </div>
          <div class="grid-item">
