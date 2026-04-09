@@ -46,12 +46,6 @@ $wait = s($assessment['avg_wait_time'],['<1 hour'=>3,'1-3 hours'=>2,'>3 hours'=>
 $data = s($assessment['data_integration_level'],['Fully Integrated'=>3,'Partial'=>2,'Fragmented'=>1]);
 $fin = s($assessment['financing_coverage'],['High'=>3,'Moderate'=>2,'Low'=>1]);
 
-/*scoring logic expanded for report for AI report generation*/
-$leadership_raw = $assessment['leadership_commitment'] ?? '';
-$roving_raw = $assessment['roving_staff'] ?? '';
-$data_raw = $assessment['data_integration_level'] ?? '';
-$risk_raw = $assessment['disruption_risk'] ?? '';
-
 $total =
 (($lead+$plan+$awp)/9*100)*0.15 +
 (($hrh+$multi+$rov)/9*100)*0.20 +
@@ -71,81 +65,6 @@ if($serv<2)$rec[]='Implement DSD (MMD)';
 if($infra<2)$rec[]='Improve infrastructure';
 if($lead<2)$rec[]='Strengthen leadership';
 if(empty($rec))$rec[]='Proceed with full integration';
-
-
-//Additonal logic for AI report generation from section 8
-$ai_report = [];
-
-/* =========================
-   1. DISRUPTION RISK LOGIC
-========================= */
-
-if ($risk_raw === 'High') {
-    $ai_report[] = "High risk of service disruption identified. Recommend a phased integration approach over >12 months to avoid patient loss and service interruption.";
-}
-
-/* =========================
-   2. LEADERSHIP LOGIC
-========================= */
-
-if ($leadership_raw === 'Low') {
-    $ai_report[] = "Low leadership commitment detected. Recommend strengthening governance, facility leadership engagement, and ownership before full integration.";
-}
-
-/* =========================
-   3. ROVING STAFF LOGIC
-========================= */
-
-if ($roving_raw === 'Yes - Regular') {
-    $ai_report[] = "Regular roving staff support is available. Recommend structured mentorship and gradual transition plan to phase out dependency while building internal capacity.";
-}
-
-/* =========================
-   4. DATA SYSTEMS LOGIC
-========================= */
-
-if ($data_raw === 'Fragmented') {
-    $ai_report[] = "Fragmented data systems detected. High risk of patient data loss during integration. Recommend strengthening EMR integration and data harmonization before full transition.";
-}
-
-/* =========================
-   5. HRH LOGIC
-========================= */
-
-if ($hrh < 2) {
-    $ai_report[] = "Significant HRH gaps identified. Recommend task-shifting, multi-skilling, and possible hub-and-spoke model implementation.";
-}
-
-/* =========================
-   6. INFRASTRUCTURE LOGIC
-========================= */
-
-if ($infra < 2) {
-    $ai_report[] = "Infrastructure limitations observed. Recommend redesigning patient flow or adopting partial integration models.";
-}
-
-/* =========================
-   7. SERVICE DELIVERY LOGIC
-========================= */
-
-if ($serv < 2) {
-    $ai_report[] = "Service delivery readiness is low. Recommend differentiated service delivery (DSD) and multi-month dispensing to reduce facility burden.";
-}
-
-/* =========================
-   8. FINAL MODEL RECOMMENDATION
-========================= */
-
-if ($total >= 80) {
-    $ai_report[] = "Facility is highly ready. Recommend Full Integration Model with digital optimization.";
-} elseif ($total >= 60) {
-    $ai_report[] = "Facility is moderately ready. Recommend Hybrid Integration Model combining One-Stop-Shop and DSD.";
-} elseif ($total >= 40) {
-    $ai_report[] = "Facility has low readiness. Recommend phased integration with strong external support.";
-} else {
-    $ai_report[] = "Facility not ready for integration. Maintain vertical support while strengthening systems.";
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -358,8 +277,8 @@ if ($total >= 80) {
                 </div>
 
             </div>
-    </div>
-    <div class="card">
+        </div>
+        <div class="card">
         <div class="card-head"><i class="fas fa-lightbulb"></i> Recommendations</div>
         <div class="card-body">
             <ul>
@@ -369,28 +288,6 @@ if ($total >= 80) {
             </ul>
         </div>
     </div>
-
-    <div class="card">
-        <div class="card-head">
-            <i class="fas fa-robot"></i> AI Integration Report
-        </div>
-
-        <div class="card-body">
-
-            <ol>
-                <?php foreach ($ai_report as $line): ?>
-                    <li style="margin-bottom:8px;"><?= $line ?></li>
-                <?php endforeach; ?>
-            </ol>
-
-        </div>
-    </div>
-
-    <p style="margin-top:15px; font-weight:bold;">
-        Overall Recommendation:
-        <?= $cat ?> facility with a readiness score of <?= round($total) ?>%.
-    </p>
-
     <div class="card">
     <div class="card-head">Integration Readiness</div>
     <div class="card-body">

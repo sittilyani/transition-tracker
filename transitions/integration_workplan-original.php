@@ -953,16 +953,6 @@ function getWorkplanHTML($workplan) {
                 </div>
                 <?php endforeach; ?>
             </div>
-            <!--<h2><?= round($total) ?>%</h2>
-                <span class="badge badge-<?= $clr ?>"><?= $cat ?></span>
-
-                <div class="progress" style="margin-top:10px;">
-                    <div class="progress-bar bg-<?= $clr ?>" style="width:<?= $total ?>%"></div>
-                </div>
-            <p style="margin-top:15px; font-weight:bold;">
-                Overall Recommendation:
-                <?= $cat ?> facility with a readiness score of <?= round($total) ?>%.
-            </p>-->
         </div>
 
         <!-- Phased Transition Timeline -->
