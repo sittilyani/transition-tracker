@@ -363,7 +363,7 @@ if (!$isAllowed) {
 
                 </div>
 
-                <!-- Reports Section -->
+                <!-- Assets Section -->
                 <div class="nav-section">
                     <div class="nav-section-title">Assets</div>
                     <div class="nav-item">
@@ -371,6 +371,21 @@ if (!$isAllowed) {
                             <img src="../assets/fontawesome/svgs-full/solid/box.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Assets
                         </a>
+                    </div>
+                </div>
+                <!-- PrEP Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">PrEP</div>
+                    <div class="nav-item">
+                        <a href="../prep/prep_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/syringe.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            PrEP dashboard
+                        </a>
+                        <a href="../prep/stockslist.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/table-list.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            PrEP stocks
+                        </a>
+
                     </div>
                 </div>
 

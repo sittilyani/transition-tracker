@@ -754,7 +754,7 @@ foreach ($sections as $section) {
     <!-- Footer Actions -->
     <div class="footer-actions">
         <div>
-            <a href="transition_guide.php" class="btn-outline">
+            <a href="KCT-Baseline-Assessment.docx" class="btn-outline">
                 <i class="fas fa-book"></i> Assessment Guide
             </a>
             <a href="transition_faq.php" class="btn-outline" style="margin-left: 10px;">
