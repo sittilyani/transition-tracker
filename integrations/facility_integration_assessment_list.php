@@ -131,9 +131,9 @@ tr:hover td{background:#f8faff;}
 <div class="page-header">
     <h1><i class="fas fa-clipboard-list"></i> Facility Integration Assessments Results</h1>
     <div class="hdr-links">
-        <a href="integration_assessment.php"><i class="fas fa-plus"></i> New Assessment</a>
-        <a href="integration_dashboard.php"><i class="fas fa-chart-bar"></i> Dashboard</a>
-        <a href="integration_assessment_list.php" class="active"><i class="fas fa-list"></i> List</a>
+        <a href="facility_integration_assessment.php"><i class="fas fa-plus"></i> New Assessment</a>
+        <a href="facility_integration_dashboard.php"><i class="fas fa-chart-bar"></i> Dashboard</a>
+        <a href="facility_integration_assessment_list.php" class="active"><i class="fas fa-list"></i> List</a>
     </div>
 </div>
 

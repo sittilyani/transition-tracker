@@ -548,7 +548,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <label>Period</label>
             <select id="periodSelect">
                 <option value="">Select Period</option>
-                <?php $ps = ['Jan-Mar 2025','Apr-Jun 2025','Jul-Sep 2025','Oct-Dec 2025'];
+                <?php $ps = ['Oct-Dec 2025', 'Jan-Mar 2026','Apr-Jun 2026','Jul-Sep 2026','Oct-Dec 2026'];
                 foreach ($ps as $p): ?>
                 <option value="<?= $p ?>" <?= $pre_period===$p?'selected':'' ?>><?= $p ?></option>
                 <?php endforeach; ?>

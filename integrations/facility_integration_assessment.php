@@ -556,7 +556,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <label>Assessment Period <span class="req">*</span></label>
                 <select name="assessment_period" id="assessment_period" class="form-select" required>
                     <option value="">-- Select Period --</option>
-                    <?php foreach(['Jan-Mar 2025','Apr-Jun 2025','Jul-Sep 2025','Oct-Dec 2025','Jan-Mar 2026','Apr-Jun 2026'] as $p): ?>
+                    <?php foreach(['Oct-Dec 2025','Jan-Mar 2026','Apr-Jun 2026', 'Jul-Sep 2026', 'Oct-Dec 2026'] as $p): ?>
                     <option value="<?= $p ?>" <?= isset($existing['assessment_period'])&&$existing['assessment_period']===$p?'selected':'' ?>><?= $p ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -959,9 +959,9 @@ textarea.form-control{min-height:80px;resize:vertical;}
     <div class="section-body">
         <div class="form-grid">
         <?php foreach([
-            ['Q64','s6_fif_collection_in_place','fif_collection_in_place','Does the facility have a FIF collection mechanism? Please select YES if the health facility has FIF collection in place, or NO if it does not. <span style="font-weight: bold">For private facilities that charge for all services, select YES</span>'],
-            ['Q65','s6_fif_includes_hiv_tb_pmtct','fif_includes_hiv_tb_pmtct','FIF collection incorporates HIV/TB, PMTCT & MNCH services? <span style="font-weight: bold">Please select YES if the FIF collection has incorporated HIV/TB services, or NO if it has not.</span>'],
-            ['Q66','s6_sha_capitation_hiv_tb','sha_capitation_hiv_tb','Is facility receiving SHA capitation for HIV/TB, PMTCT & MNCH? <span style="font-weight: bold">Please select YES if the health facility receiving SHA capitation for HIV/TB services, or NO if it is not.</span>'],
+            ['Q64','s6_fif_collection_in_place','fif_collection_in_place','Does the facility have a FIF collection mechanism? <span style="color: blue;">Please select YES if the health facility has FIF collection in place, or NO if it does not. For private facilities that charge for all services, select YES</span>'],
+            ['Q65','s6_fif_includes_hiv_tb_pmtct','fif_includes_hiv_tb_pmtct','FIF collection incorporates HIV/TB, PMTCT & MNCH services? <span style="color: blue;">Please select YES if the FIF collection has incorporated HIV/TB services, or NO if it has not.</span>'],
+            ['Q66','s6_sha_capitation_hiv_tb','sha_capitation_hiv_tb','Is facility receiving SHA capitation for HIV/TB, PMTCT & MNCH? <span style="color: blue;">Please select YES if the health facility receiving SHA capitation for HIV/TB services, or NO if it is not.</span>'],
         ] as [$qn,$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $qn ?>. <?= $lbl ?></label>
@@ -979,7 +979,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
 <!-- ─── SECTION 7: Mortality Outcomes ───────────────────────────────────── -->
 <div class="form-section" id="sec_s7">
     <div class="section-head">
-        <div class="section-head-left"><i class="fas fa-heartbeat"></i> Section 7: Mortality Outcomes</div>
+        <div class="section-head-left"><i class="fas fa-heartbeat"></i> Section 7: Mortality Outcomes (Sustainability of quality of care)</div>
         <div class="section-head-right">
             <span class="saved-badge <?= in_array('s7',$sections_saved)?'show':'' ?>" id="badge_s7"><i class="fas fa-check"></i> Saved</span>
         </div>
@@ -987,12 +987,12 @@ textarea.form-control{min-height:80px;resize:vertical;}
     <div class="section-body">
         <div class="form-grid-3">
         <?php foreach([
-            ['s7_deaths_all_cause','deaths_all_cause','Q67. Total deaths (all-cause mortality)Indicate the Number of deaths from any cause in the quarter (Jan 26 - Mar 26)'],
-            ['s7_deaths_hiv_related','deaths_hiv_related','Q68. HIV-related deaths'],
-            ['s7_deaths_hiv_pre_art','deaths_hiv_pre_art','Q69. HIV deaths before ART linkage'],
-            ['s7_deaths_tb','deaths_tb','Q70. TB deaths'],
-            ['s7_deaths_maternal','deaths_maternal','Q71. Maternal deaths'],
-            ['s7_deaths_perinatal','deaths_perinatal','Q72. Perinatal deaths (stillbirths + early neonatal <7 days)'],
+            ['s7_deaths_all_cause','deaths_all_cause','Q67. Total deaths (all-cause mortality)<span style="color: blue;">Indicate the Number of deaths from any cause in the quarter (Jan 2026 - Mar 2026)</span>'],
+            ['s7_deaths_hiv_related','deaths_hiv_related','Q68. HIV-related deaths<span style="color: blue;">Indicate the Number of HIV related deaths in the quarter (Jan 2026 - Mar 2026)Note: Value enterd here should not be more than the value entered in question 67</span>'],
+            ['s7_deaths_hiv_pre_art','deaths_hiv_pre_art','Q69. HIV deaths before ART linkage <span style="color: blue;">Indicate the Number of HIV related deaths that occurred before the client was linked to ART in the quarter (Jan 2026 - Mar 2026). Note: Value enterd here should not be more than the value entered in question 67</span>'],
+            ['s7_deaths_tb','deaths_tb','Q70. TB deaths <span style="color: blue;">"Indicate the Number of TB deaths in the quarter (Jan 2026 - Mar 2026) Note: Value enterd here should not be more than the value entered in question 67</span>'],
+            ['s7_deaths_maternal','deaths_maternal','Q71. Maternal deaths <span style="color: blue;">Indicate the Number of Maternal deaths  in the quarter (Jan 2026 - Mar 2026) Note: Value enterd here should not be more than the value entered in question 67</span>'],
+            ['s7_deaths_perinatal','deaths_perinatal','Q72. Perinatal deaths (stillbirths + early neonatal <7 days) <span style="color: blue;">"Indicate the Number of Perinatal deaths (i.e., stillbirths and early neonatal deaths <7 days)  in the quarter (Jan 2026 - Mar 2026). Note: Value enterd here should not be more than the value entered in question 67</span>'],
         ] as [$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $lbl ?></label>
@@ -1004,10 +1004,11 @@ textarea.form-control{min-height:80px;resize:vertical;}
     </div>
 </div>
 
-<!-- ─── SECTION 8a: Integration Readiness ───────────────────────────────── -->
+<!-- ─── SECTION 8a: Integration Readiness proposed questions for AI scoring and reports generation ───────────────────────────────── -->
 <div class="form-section" id="sec_s8_readiness">
     <div class="section-head">
         <div class="section-head-left"><i class="fas fa-project-diagram"></i> Section 8a: Integration Readiness &amp; Sustainability</div>
+        <div class="hint">These are proposed additional questions for AI scoring and reports generation</div>
         <div class="section-head-right">
             <span class="saved-badge <?= in_array('s8_readiness',$sections_saved)?'show':'' ?>" id="badge_s8_readiness"><i class="fas fa-check"></i> Saved</span>
         </div>
@@ -1016,19 +1017,19 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <div class="form-grid">
         <?php
         $readiness_qs = [
-            ['Q86','s8r_leadership_commitment','leadership_commitment','Leadership commitment to HIV integration',['High','Moderate','Low']],
+            ['Q86','s8r_leadership_commitment','leadership_commitment','How would you rate the facility leadership commitment to HIV integration',['High','Moderate','Low']],
             ['Q87','s8r_transition_plan','transition_plan','Is there a transition/integration plan?',['Yes - Implemented','Yes - Not Implemented','No']],
-            ['Q88','s8r_hiv_in_awp','hiv_in_awp','HIV services included in AWP/Budget?',['Fully','Partially','No']],
-            ['Q89','s8r_hrh_gap','hrh_gap','Estimated HRH gap (%)',['0-10%','10-30%','>30%']],
-            ['Q90','s8r_staff_multiskilled','staff_multiskilled','Are staff multi-skilled?',['Yes','Partial','No']],
-            ['Q91','s8r_roving_staff','roving_staff','Is there roving/visiting HIV/TB staff?',['Yes - Regular','Yes - Irregular','No']],
-            ['Q92','s8r_infrastructure_capacity','infrastructure_capacity','Infrastructure capacity for integration',['Adequate','Minor changes needed','Major redesign needed']],
-            ['Q93','s8r_space_adequacy','space_adequacy','Space adequacy',['Adequate','Congested','Severely Inadequate']],
-            ['Q94','s8r_service_delivery_without_ccc','service_delivery_without_ccc','Can HIV services run without CCC?',['Yes','Partially','No']],
-            ['Q95','s8r_avg_wait_time','avg_wait_time','Average patient waiting time',['<1 hour','1-3 hours','>3 hours']],
-            ['Q96','s8r_data_integration_level','data_integration_level','Data integration level',['Fully Integrated','Partial','Fragmented']],
-            ['Q97','s8r_financing_coverage','financing_coverage','Financing coverage for HIV services',['High','Moderate','Low']],
-            ['Q98','s8r_disruption_risk','disruption_risk','Risk of service disruption',['Low','Moderate','High']],
+            ['Q88','s8r_hiv_in_awp','hiv_in_awp','To what extend are HIV/TB services included in AWP/Budget? <span style="color: blue;">Select Fully, if there is inclusion in the AWP and funds released for servivces, select Partially if dunds are allocated but not released for the services</span>',['Fully','Partially','No']],
+            ['Q89','s8r_hrh_gap','hrh_gap','What is the estimated HRH gap (%) <span style="color: blue;">Check against WISN scores for County Staff and give estimate for HRH gap in offering HIV/TB services</span>',['0-10%','10-30%','>30%']],
+            ['Q90','s8r_staff_multiskilled','staff_multiskilled','Are staff multi-skilled <span style="color: blue;">Select yes if the county staff are multi-skilled in offering both HIV/TB/MNCH services alongside other services?, Partial if they require mentorship to offer all services, other wise select NO</span>',['Yes','Partial','No']],
+            ['Q91','s8r_roving_staff','roving_staff','Is there roving/visiting HIV/TB staff? <span style="color: blue;">Slect yes, if an implementing partner clinician sees patients on scheduled days or HRIO visits the facility to collect data routinely, irregular if the visits are ad hoc</span>',['Yes - Regular','Yes - Irregular','No']],
+            ['Q92','s8r_infrastructure_capacity','infrastructure_capacity','How do you rate the infrastructure capacity for integration',['Adequate','Minor changes needed','Major redesign needed']],
+            ['Q93','s8r_space_adequacy','space_adequacy','How would you define the space adequacy for integration?',['Adequate','Congested','Severely Inadequate']],
+            ['Q94','s8r_service_delivery_without_ccc','service_delivery_without_ccc','Can HIV services run without CCC? <span style="color: blue;"> Select yes, if the PLHIV will receive quality services if the standalone CCC is closed or implementing partner HRH withdrawn, partially if the reamining staff will require capacity support to offer these services</span>',['Yes','Partially','No']],
+            ['Q95','s8r_avg_wait_time','avg_wait_time','What is the estimated average patient waiting time <span style="color: blue;">interview clients or get data from facility for average waiting time from EMR - checkin time vs checkout time</span>',['<1 hour','1-3 hours','>3 hours']],
+            ['Q96','s8r_data_integration_level','data_integration_level','Indicate the data integration level <span style="color: blue;">Select Fully integrated if data is accessible in any department from a unified system or if systems are interoperable, partial if the systems are there but does not cover all departments and fragmented if systems do not communicate at all</span>',['Fully Integrated','Partial','Fragmented']],
+            ['Q97','s8r_financing_coverage','financing_coverage','Select the financing coverage for HIV services',['High','Moderate','Low']],
+            ['Q98','s8r_disruption_risk','disruption_risk','Indicate the risk of service disruption if integration of HIV services takes place <span style="color: blue;">Ask for opinion form patients or staff</span>',['Low','Moderate','High']],
         ];
         foreach ($readiness_qs as [$qn,$fn,$db,$lbl,$opts]): ?>
         <div class="form-group">
@@ -1043,6 +1044,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <?php endforeach; ?>
         <div class="form-group full">
             <label>Q99. Key barriers to integration</label>
+            <div class="hint">List all key barriers to integration that may have negative or positive impact for action</div>
             <textarea name="s8r_integration_barriers" class="form-control"><?= v('integration_barriers',$e_data) ?></textarea>
         </div>
         </div>
@@ -1062,23 +1064,23 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <div class="form-grid">
         <?php
         $lab_yn = [
-            ['Q72','s8l_lab_specimen_referral','lab_specimen_referral','Does the facility have an integrated specimen referral system?',['Yes','No']],
-            ['Q73','s8l_lab_referral_county_funded','lab_referral_county_funded','Is the specimen referral system fully funded by the county?',['Yes','No']],
-            ['Q74','s8l_lab_iso15189_accredited','lab_iso15189_accredited','Is the laboratory accredited to ISO 15189?',['Yes','No']],
-            ['Q76','s8l_lab_lcqi_implementing','lab_lcqi_implementing','Is the laboratory implementing LCQI?',['Yes','No']],
-            ['Q77','s8l_lab_lcqi_internal_audits','lab_lcqi_internal_audits','If LCQI: does the lab conduct regular internal audits using LCQI checklist?',['Yes','No']],
-            ['Q78','s8l_lab_eqa_all_tests','lab_eqa_all_tests','Does the facility participate in EQA for all tests performed?',['Yes','No']],
-            ['Q79','s8l_lab_sla_equipment','lab_sla_equipment','Does the facility have service-level agreements for equipment?',['Yes','No']],
-            ['Q81','s8l_lab_lims_in_place','lab_lims_in_place','Is there a Lab Information Management System (LIMS)?',['Yes','No']],
-            ['Q82','s8l_lab_lims_emr_integrated','lab_lims_emr_integrated','Is the LIMS integrated into the facility EMR?',['Yes','No']],
-            ['Q83','s8l_lab_lims_interoperable','lab_lims_interoperable','Is the LIMS interoperable with electronic lab equipment?',['Yes','No']],
-            ['Q84','s8l_lab_his_integration_guide','lab_his_integration_guide','Is there a standard HIS integration guide (e.g. FHIR) in place?',['Yes','No']],
-            ['Q85','s8l_lab_dedicated_his_staff','lab_dedicated_his_staff','Does the facility have dedicated technical staff supporting HIS needs?',['Yes','No']],
-            ['Q88','s8l_lab_biosafety_trained','lab_biosafety_trained','Have all laboratory staff been trained in Biosafety?',['Yes','No']],
-            ['Q89','s8l_lab_hepb_vaccinated','lab_hepb_vaccinated','Have all laboratory staff been vaccinated against Hepatitis B?',['Yes','No']],
-            ['Q90','s8l_lab_ipc_committee','lab_ipc_committee','Does the facility have an active IPC committee?',['Yes','No']],
-            ['Q91','s8l_lab_ipc_workplan','lab_ipc_workplan','Does the facility have an active IPC workplan?',['Yes','No']],
-            ['Q92','s8l_lab_moh_virtual_academy','lab_moh_virtual_academy','Does the facility have access to MOH virtual academy for Lab trainings?',['Yes','No']],
+            ['Q72','s8l_lab_specimen_referral','lab_specimen_referral','Does the facility have an integrated specimen referral system?<span style="color: blue;">Please select YES if the facility has an integrated specimen referral system, or NO if it does not.</span>',['Yes','No']],
+            ['Q73','s8l_lab_referral_county_funded','lab_referral_county_funded','Is the specimen referral system fully funded by the county?<span style="color: blue;">Please select YES if the system is fully funded, or NO if it is partially funded or not funded by the county.</span>',['Yes','No']],
+            ['Q74','s8l_lab_iso15189_accredited','lab_iso15189_accredited','Is the laboratory accredited to ISO 15189?<span style="color: blue;">Please select YES if the laboratory is accredited, or NO if it is not.</span>',['Yes','No']],
+            ['Q76','s8l_lab_lcqi_implementing','lab_lcqi_implementing','Is the laboratory implementing LCQI?<span style="color: blue;">Please select YES if the laboratory is implementing LCQI, or NO if it is not.</span>',['Yes','No']],
+            ['Q77','s8l_lab_lcqi_internal_audits','lab_lcqi_internal_audits','If LCQI: does the lab conduct regular internal audits using LCQI checklist?<span style="color: blue;">Please select YES if the laboratory is implementing LCQI, or NO if it is not.</span>',['Yes','No']],
+            ['Q78','s8l_lab_eqa_all_tests','lab_eqa_all_tests','Does the facility participate in EQA for all tests performed?<span style="color: blue;">Please select YES if the facility participates in External Quality Assurance for all tests, or NO if it does not.</span>',['Yes','No']],
+            ['Q79','s8l_lab_sla_equipment','lab_sla_equipment','Does the facility have service-level agreements for equipment?<span style="color: blue;">Please select YES if service-level agreements are in place for equipment, or NO if they are not.</span>',['Yes','No']],
+            ['Q81','s8l_lab_lims_in_place','lab_lims_in_place','Is there a Lab Information Management System (LIMS)?<span style="color: blue;">Please select YES if a LIMS is in place, or NO if there is not.</span>',['Yes','No']],
+            ['Q82','s8l_lab_lims_emr_integrated','lab_lims_emr_integrated','Is the LIMS integrated into the facility EMR?<span style="color: blue;">Please select YES if the LIMS is integrated with the facilitys Electronic Medical Record, or NO if it is not.</span>',['Yes','No']],
+            ['Q83','s8l_lab_lims_interoperable','lab_lims_interoperable','Is the LIMS interoperable with electronic lab equipment?<span style="color: blue;">Please select YES if the LIMS is interoperable with lab equipment, or NO if it is not.</span>',['Yes','No']],
+            ['Q84','s8l_lab_his_integration_guide','lab_his_integration_guide','Is there a standard HIS integration guide (e.g. FHIR) in place?<span style="color: blue;">Please select YES if there is a standard Systems  integration guide/ e.g FHIR guide  in place for hospital wide HIS integration /within the county, or NO if it is not available. Or NO if not</span>',['Yes','No']],
+            ['Q85','s8l_lab_dedicated_his_staff','lab_dedicated_his_staff','Does the facility have dedicated technical staff supporting HIS needs?<span style="color: blue;">Please select YES  if  the facility  has  dedicated technical staff supporting HIS needs . Or NO if not available</span>',['Yes','No']],
+            ['Q88','s8l_lab_biosafety_trained','lab_biosafety_trained','Have all laboratory staff been trained in Biosafety?<span style="color: blue;">Please select YES if all relevant staff have been trained, or NO if they have not.</span>',['Yes','No']],
+            ['Q89','s8l_lab_hepb_vaccinated','lab_hepb_vaccinated','Have all laboratory staff been vaccinated against Hepatitis B?<span style="color: blue;">Please select YES if all relevant staff have been vaccinated, or NO if they have not.</span>',['Yes','No']],
+            ['Q90','s8l_lab_ipc_committee','lab_ipc_committee','Does the facility have an active IPC committee?<span style="color: blue;">Please select YES if the facility has an active Infection Prevention and Control committee and workplan, or NO if it does not.</span>',['Yes','No']],
+            ['Q91','s8l_lab_ipc_workplan','lab_ipc_workplan','Does the facility have an active IPC workplan?<span style="color: blue;">Please select YES if the facility has an active Infection Prevention and Control committee and workplan, or NO if it does not.</span>',['Yes','No']],
+            ['Q92','s8l_lab_moh_virtual_academy','lab_moh_virtual_academy','Does the facility have access to MOH virtual academy for Lab trainings?<span style="color: blue;">Please select YES if the county has access to the MOH virtual academy for training, or NO if it does not.</span>',['Yes','No']],
         ];
         foreach ($lab_yn as [$qn,$fn,$db,$lbl,$opts]): ?>
         <div class="form-group">
@@ -1094,9 +1096,9 @@ textarea.form-control{min-height:80px;resize:vertical;}
 
         <!-- Questions with partner/county/gok options -->
         <?php foreach([
-            ['Q75','s8l_lab_kenas_fee_support','lab_kenas_fee_support','Q75. Who is supporting KENAS accreditation/assessment fee?'],
-            ['Q80','s8l_lab_sla_support','lab_sla_support','Q80. Who is supporting the service-level agreements?'],
-            ['Q87','s8l_lab_shipping_cost_support','lab_shipping_cost_support','Q87. Who is supporting the cost of shipping equipment?'],
+            ['Q75','s8l_lab_kenas_fee_support','lab_kenas_fee_support','Q75. Who is supporting KENAS accreditation/assessment fee?<span style="color: blue;">Please select who is supporting payment of KENAS accreditation/assessment fee</span> '],
+            ['Q80','s8l_lab_sla_support','lab_sla_support','Q80. Who is supporting the service-level agreements?<span style="color: blue;">Please select YES if service-level agreements are in place for equipment, or NO if they are not.</span>'],
+            ['Q87','s8l_lab_shipping_cost_support','lab_shipping_cost_support','Q87. Who is supporting the cost of shipping equipment?<span style="color: blue;">Please select who is supporting the cost of shipping these equipment?; partner, county, national government</span>'],
         ] as [$qn,$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $lbl ?></label>
@@ -1110,6 +1112,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
 
         <div class="form-group">
             <label>Q86. Is the Biosafety Cabinet (BSC) calibration status current?</label>
+            <div class="hint">Please select YES if the calibration is current, NO if it is not, or NA if not applicable.</div>
             <div class="yn-group">
                 <?php foreach(['Yes','No','NA'] as $opt): ?>
                 <label class="yn-opt"><input type="radio" name="s8l_lab_bsc_calibration_current" value="<?= $opt ?>" <?= chk('lab_bsc_calibration_current',$opt,$e_data) ?>> <?= $opt ?></label>
@@ -1132,10 +1135,10 @@ textarea.form-control{min-height:80px;resize:vertical;}
     <div class="section-body">
         <div class="form-grid">
         <?php foreach([
-            ['Q93','s9_comm_hiv_feedback_mechanism','comm_hiv_feedback_mechanism','Does the facility have a mechanism (e.g. exit interviews) for obtaining feedback on HIV service integration?'],
-            ['Q94','s9_comm_roc_feedback_used','comm_roc_feedback_used','Does the facility use beneficiary (RoC) feedback to inform HIV service integration decisions?'],
-            ['Q96','s9_comm_community_representation','comm_community_representation','Does the facility have community representation in the HIV service integration committee?'],
-            ['Q97','s9_comm_plhiv_in_discussions','comm_plhiv_in_discussions','Does the facility involve PLHIV representatives in HIV service integration discussions?'],
+            ['Q93','s9_comm_hiv_feedback_mechanism','comm_hiv_feedback_mechanism','Does the facility have a mechanism (e.g. exit interviews) for obtaining feedback on HIV service integration? <span style="color: blue;">Please select YES if the have a mechanism e.g exit interviews) for obtaining comodity feedback on itegration of HIV services, on NO if not.</span>'],
+            ['Q94','s9_comm_roc_feedback_used','comm_roc_feedback_used','Does the facility use beneficiary (RoC) feedback to inform HIV service integration decisions?<span style="color: blue;">Please select YES, if the  health facility use beneficiary (RoCs) feedback to inform HIV service integration decision, or NO if Not.</span>'],
+            ['Q96','s9_comm_community_representation','comm_community_representation','Does the facility have community representation in the HIV service integration committee?<span style="color: blue;">Please select YES, if the health facility have a community representation in the HIV service integration committee, or NO if Not.</span>'],
+            ['Q97','s9_comm_plhiv_in_discussions','comm_plhiv_in_discussions','Does the facility involve PLHIV representatives in HIV service integration discussions?<span style="color: blue;">Please select YES, if the health facility involve PLHIV representatives in HIV service integration dicussions, or NO if Not.</span>'],
         ] as [$qn,$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $qn ?>. <?= $lbl ?></label>
@@ -1147,6 +1150,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <?php endforeach; ?>
         <div class="form-group">
             <label>Q95. In the last 3 months, how many health talks has the facility held with PLHIVs on integration of HIV services?</label>
+            <div class="hint">Please enter the number of health talks the health facility held with PLHIVs on integration of HIV services.</div>
             <input type="number" name="s9_comm_health_talks_plhiv" class="form-control" min="0" placeholder="0" value="<?= v('comm_health_talks_plhiv',$e_data) ?>">
         </div>
         </div>
@@ -1165,11 +1169,11 @@ textarea.form-control{min-height:80px;resize:vertical;}
     <div class="section-body">
         <div class="form-grid">
         <?php foreach([
-            ['Q98','s10_sc_khis_reports_monthly','sc_khis_reports_monthly','Has the facility been consistently submitting commodity consumption reports (FMARPS/FCDRR) in KHIS monthly?'],
-            ['Q99','s10_sc_stockout_arvs','sc_stockout_arvs','In the last 3 months, has the facility had a stock-out of HIV ARVs?'],
-            ['Q100','s10_sc_stockout_tb_drugs','sc_stockout_tb_drugs','In the last 3 months, has the facility had a stock-out of TB drugs (Anti-TBs, TPT)?'],
-            ['Q101','s10_sc_stockout_hiv_reagents','sc_stockout_hiv_reagents','In the last 3 months, has the facility had a stock-out of HIV lab reagents (VL, CD4)?'],
-            ['Q102','s10_sc_stockout_tb_reagents','sc_stockout_tb_reagents','In the last 3 months, has the facility had a stock-out of TB testing reagents (LFA, LAMP, TRUNAT, GeneXpert)?'],
+            ['Q98','s10_sc_khis_reports_monthly','sc_khis_reports_monthly','Has the facility been consistently submitting commodity consumption reports (FMARPS/FCDRR) in KHIS monthly?<span style="color: blue;">Please select YES if the health facility been consistently submitting commodity consumption reports (FMARPS-MOH729B, FCDRR-MOH730B) in KHIS on a monthly basis, or NO if not.</span>'],
+            ['Q99','s10_sc_stockout_arvs','sc_stockout_arvs','In the last 3 months, has the facility had a stock-out of HIV ARVs?<span style="color: blue;">Please select YES if  the health facility had a stock out of HIV ARVs , or NO if not.</span>'],
+            ['Q100','s10_sc_stockout_tb_drugs','sc_stockout_tb_drugs','In the last 3 months, has the facility had a stock-out of TB drugs (Anti-TBs, TPT)?<span style="color: blue;">Please select YES if  health facility had a stock out of TB drugs (Anti-TBs, TPT), or NO if not.</span>'],
+            ['Q101','s10_sc_stockout_hiv_reagents','sc_stockout_hiv_reagents','In the last 3 months, has the facility had a stock-out of HIV lab reagents (VL, CD4)?<span style="color: blue;">Please select YES if  the health facility had a stock out of HIV lab reagents (VL, CD4), or NO if not.</span>'],
+            ['Q102','s10_sc_stockout_tb_reagents','sc_stockout_tb_reagents','In the last 3 months, has the facility had a stock-out of TB testing reagents (LFA, LAMP, TRUNAT, GeneXpert)?<span style="color: blue;">Please select YES if the health facility had a stock out of TB testing reagents (TB LFA, TB LAMP, TRUNAT, GENE EXPERT), or NO if not.</span>'],
         ] as [$qn,$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $qn ?>. <?= $lbl ?></label>
@@ -1195,8 +1199,8 @@ textarea.form-control{min-height:80px;resize:vertical;}
     <div class="section-body">
         <div class="form-grid">
         <?php foreach([
-            ['Q103','s11_phc_chp_referrals','phc_chp_referrals','Does the facility receive documented referrals of PLHIV (e.g. LTFU, sick clients) from Community Health Promoters (CHPs)?'],
-            ['Q104','s11_phc_chwp_tracing','phc_chwp_tracing','Does the facility work with CHW/Ps to trace and link back PLHIV who have disengaged from HIV treatment?'],
+            ['Q103','s11_phc_chp_referrals','phc_chp_referrals','Does the facility receive documented referrals of PLHIV (e.g. LTFU, sick clients) from Community Health Promoters (CHPs)?<span style="color: blue;">Please select YES ifthe health facility receive documented referrals of PLHIV (e.g., those lost to follow-up or sick clients) from Community Health Promoters (CHPs), or NO if not.</span>'],
+            ['Q104','s11_phc_chwp_tracing','phc_chwp_tracing','Does the facility work with CHW/Ps to trace and link back PLHIV who have disengaged from HIV treatment?<span style="color: blue;">Please select YES if   the health facility work with Community Health Workers/ Promoters (CHW/Ps) to trace and link back PLHIV who have disengaged from HIV treatment, or NO if not.</span>'],
         ] as [$qn,$fn,$db,$lbl]): ?>
         <div class="form-group">
             <label><?= $qn ?>. <?= $lbl ?></label>
