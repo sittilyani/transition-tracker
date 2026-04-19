@@ -245,7 +245,7 @@ $kpi_all = mysqli_fetch_assoc(mysqli_query($conn,
                 <td style="font-size:11px"><?= htmlspecialchars($row['collected_by']??'') ?></td>
                 <td style="font-size:11px"><?= $row['collection_date']?date('d M Y',strtotime($row['collection_date'])):'—' ?></td>
                 <td class="actions">
-                    <a href="integration_assessment.php?id=<?= $row['assessment_id'] ?>" class="btn-icon btn-edit" title="Continue editing">
+                    <a href="facility_integration_assessment.php?id=<?= $row['assessment_id'] ?>" class="btn-icon btn-edit" title="Continue editing">
                         <i class="fas fa-edit"></i> <?= $status==='Draft'?'Continue':'Edit' ?>
                     </a>
                     <a href="?delete=<?= $row['assessment_id'] ?>" class="btn-icon btn-delete" title="Delete"

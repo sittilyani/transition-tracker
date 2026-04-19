@@ -548,7 +548,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <label>Period</label>
             <select id="periodSelect">
                 <option value="">Select Period</option>
-                <?php $ps = ['Jan-Mar 2025','Apr-Jun 2025','Jul-Sep 2025','Oct-Dec 2025'];
+                <?php $ps = ['Oct-Dec 2025', 'Jan-Mar 2026','Apr-Jun 2026','Jul-Sep 2026','Oct-Dec 2026'];
                 foreach ($ps as $p): ?>
                 <option value="<?= $p ?>" <?= $pre_period===$p?'selected':'' ?>><?= $p ?></option>
                 <?php endforeach; ?>
@@ -702,14 +702,14 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <div class="hint">Please select the EMR type that the county selected for facility-wide deployment</div>
                 <select name="s2b_selected_emr_type" class="form-select">
                     <option value="">Select EMR Type</option>
-                    <?php foreach(['KenyaEMR','TIBU','AfyaKE','OpenMRS','Other'] as $opt): ?>
+                    <?php foreach(['KenyaEMR','Tiberbu','AfyaKE','Other'] as $opt): ?>
                     <option value="<?= $opt ?>" <?= sel('selected_emr_type',$opt,$e_data) ?>><?= $opt ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group">
                 <label>6. Other EMR, Please Specify</label>
-                <div class="hint">Please specify the other EMR in use</div>
+                <div class="hint">Please specify if choice above is other EMR </div>
                 <input type="text" name="s2b_other_emr_specify" class="form-control" value="<?= v('other_emr_specify',$e_data) ?>">
             </div>
             <div class="form-group">
@@ -744,7 +744,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
 <!-- SECTION 3: HRH TRANSITION -->
 <div class="form-section" id="sec_s3">
     <div class="section-head">
-        <div class="section-head-left"><i class="fas fa-users"></i> Section 3: HRH Transition (Workforce Absorption)</div>
+        <div class="section-head-left"> Section 3: HRH Transition (Workforce Absorption)</div>
         <div class="section-head-right">
             <span class="saved-badge <?= in_array('s3',$sections_saved)?'show':'' ?>" id="badge_s3"><i class="fas fa-check"></i> Saved</span>
         </div>
@@ -759,7 +759,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             </div>
         </div>
 
-        <div class="sub-label" style="margin-top:20px"><i class="fas fa-chart-line"></i> HCWs Supported by PEPFAR IP in the County</div>
+        <div class="sub-label" style="margin-top:20px"> HCWs Supported by PEPFAR IP in the County</div>
         <div class="form-grid-3">
             <div class="form-group"><label>11. Total HCWs supported by PEPFAR IP</label><input type="number" name="s3_hcw_total_pepfar" class="form-control" value="<?= v('hcw_total_pepfar',$e_data) ?>"></div>
             <div class="form-group"><label>12. Clinical Staff</label><input type="number" name="s3_hcw_clinical_pepfar" class="form-control" value="<?= v('hcw_clinical_pepfar',$e_data) ?>"></div>
@@ -769,7 +769,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group"><label>16. Other Staff</label><input type="number" name="s3_hcw_other_pepfar" class="form-control" value="<?= v('hcw_other_pepfar',$e_data) ?>"></div>
         </div>
 
-        <div class="sub-label" style="margin-top:20px"><i class="fas fa-exchange-alt"></i> HCWs Transitioned to County Support (Payroll)</div>
+        <div class="sub-label" style="margin-top:20px">HCWs Transitioned to County Support (Payroll)</div>
         <div class="form-grid-3">
             <div class="form-group"><label>17. Total HCWs Transitioned</label><input type="number" name="s3_hcw_transitioned_total" class="form-control" value="<?= v('hcw_transitioned_total',$e_data) ?>"></div>
             <div class="form-group"><label>18. Clinical Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_clinical" class="form-control" value="<?= v('hcw_transitioned_clinical',$e_data) ?>"></div>
@@ -986,7 +986,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                     <label class="yn-opt"><input type="radio" name="s8_has_hiv_tb_twg" value="No" <?= chk('has_hiv_tb_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>52. Number of C&T/TB TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_hiv_tb_twg_meetings" class="form-control" value="<?= v('hiv_tb_twg_meetings',$e_data) ?>"></div>
+            <div class="form-group"><label>52. Number of C&T/TB TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_hiv_tb_twg_meetings" class="form-control" value="<?= v('hiv_tb_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>53. Does the County have a PMTCT TWG?</label>
                 <div class="yn-group">
@@ -994,7 +994,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                     <label class="yn-opt"><input type="radio" name="s8_has_pmtct_twg" value="No" <?= chk('has_pmtct_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>54. Number of PMTCT TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_pmtct_twg_meetings" class="form-control" value="<?= v('pmtct_twg_meetings',$e_data) ?>"></div>
+            <div class="form-group"><label>54. Number of PMTCT TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_pmtct_twg_meetings" class="form-control" value="<?= v('pmtct_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>55. Does the County have a MNCH TWG?</label>
                 <div class="yn-group">
@@ -1002,7 +1002,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                     <label class="yn-opt"><input type="radio" name="s8_has_mnch_twg" value="No" <?= chk('has_mnch_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>56. Number of MNCH TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_mnch_twg_meetings" class="form-control" value="<?= v('mnch_twg_meetings',$e_data) ?>"></div>
+            <div class="form-group"><label>56. Number of MNCH TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_mnch_twg_meetings" class="form-control" value="<?= v('mnch_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>57. Does the County have a HIV Prevention TWG?</label>
                 <div class="yn-group">
@@ -1010,7 +1010,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                     <label class="yn-opt"><input type="radio" name="s8_has_hiv_prevention_twg" value="No" <?= chk('has_hiv_prevention_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>58. Number of HIV Prevention TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_hiv_prevention_twg_meetings" class="form-control" value="<?= v('hiv_prevention_twg_meetings',$e_data) ?>"></div>
+            <div class="form-group"><label>58. Number of HIV Prevention TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_hiv_prevention_twg_meetings" class="form-control" value="<?= v('hiv_prevention_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>59. Is there a functional County integration oversight team and/or County HIV transition team?</label>
                 <div class="yn-group">
@@ -1095,7 +1095,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
     </div>
     <div class="section-body">
         <div class="form-group">
-            <label>65. Number of days free of maternal deaths in the quarter (Oct 25 - Dec 25)</label>
+            <label>65. Number of days free of maternal deaths in the quarter (Jan 26 - Mar 26)</label>
             <div class="hint">Indicate the number of days that maternal deaths were not reported. Should be less than or equal to 92 days.</div>
             <input type="number" name="s11_days_without_maternal_deaths" class="form-control" min="0" max="92" value="<?= v('days_without_maternal_deaths',$e_data) ?>">
         </div>

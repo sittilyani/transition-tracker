@@ -269,34 +269,55 @@ if (!$isAllowed) {
                             Facility Integration Assessment List
                         </a>
                     </div>
+
                     <div class="nav-item">
-                        <a href="../integrations/county_integration_assessment.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../integrations/facility_integration_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Facility Integration Dashboard
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../integrations/facility_integration_comparison_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Facility Integration Comparison Dashboard
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../integrations/facility_integration_workplan.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Facility Integration Workplan
+                        </a>
+                    </div>
+
+                    <!--start of county integration assessment-->
+                    <div class="nav-item">
+                        <a href="../integrations/county_integration_assessment.php" target="contentFrame" class="nav-link" onclick="handleNavClick()" style="color: yellow;">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             New County Integration Assessment
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../integrations/county_integration_assessment_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../integrations/county_integration_assessment_list.php" target="contentFrame" class="nav-link" onclick="handleNavClick()" style="color: yellow;">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             County Integration Assessment List
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../integrations/integration_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../integrations/county_integration_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()" style="color: yellow;">
                             <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Integration Dashboard
+                            County Integration Dashboard
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../integrations/integration_comparison_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../integrations/county_integration_comparison_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()" style="color: yellow;">
                             <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Integration Comparison Dashboard
+                            County Integration Comparison Dashboard
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../integrations/integration_workplan.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../integrations/county_integration_workplan.php" target="contentFrame" class="nav-link" onclick="handleNavClick()" style="color: yellow;">
                             <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
-                            Integration Workplan
+                            County Integration Workplan
                         </a>
                     </div>
 
