@@ -126,15 +126,13 @@ if (isset($_POST['ajax_save_section'])) {
 
     // ── Get or create assessment header ────────────────────────────────────────
     if (!$aid) {
-        // First, check if an assessment already exists for this facility and period
         $existing = mysqli_fetch_assoc(mysqli_query($conn,
             "SELECT assessment_id, sections_saved FROM integration_assessments
              WHERE facility_id=$fid AND assessment_period='$period' ORDER BY assessment_id DESC LIMIT 1"));
-
         if ($existing) {
             $aid = (int)$existing['assessment_id'];
         } else {
-            // Create draft header with all facility data
+            // Create draft header
             $fn  = $e($_POST['facility_name']  ?? '');
             $mfl = $e($_POST['mflcode']         ?? '');
             $cn  = $e($_POST['county_name']     ?? '');
@@ -149,36 +147,20 @@ if (isset($_POST['ajax_save_section'])) {
             $lng = is_numeric($_POST['longitude'] ?? '') ? (float)$_POST['longitude'] : 'NULL';
             $lv  = $e($_POST['level_of_care_name'] ?? '');
             $cd  = $e($_POST['collection_date'] ?? date('Y-m-d'));
-
-            $insert_query = "INSERT INTO integration_assessments
+            mysqli_query($conn,
+                "INSERT INTO integration_assessments
                  (facility_id, assessment_period, facility_name, mflcode, county_name,
                   subcounty_name, owner, sdp, agency, emr, emrstatus, infrastructuretype,
                   latitude, longitude, level_of_care_name, assessment_status,
-                  sections_saved, collected_by, collection_date, created_at, updated_at)
+                  sections_saved, collected_by, collection_date)
                  VALUES ($fid,'$period','$fn','$mfl','$cn','$sc','$ow','$sdp','$ag',
                          '$em','$es','$it',$lat,$lng,'$lv','Draft',
-                         '[]','$saved_by','$cd', NOW(), NOW())";
-
-            if (!mysqli_query($conn, $insert_query)) {
-                echo json_encode(['success'=>false,'error'=>'Failed to create assessment: ' . mysqli_error($conn)]);
-                exit();
-            }
+                         '[]','$saved_by','$cd')");
             $aid = (int)mysqli_insert_id($conn);
-
-            // Update the hidden assessment ID in the response
-            echo json_encode([
-                'success' => true,
-                'assessment_id' => $aid,
-                'sections_saved' => [],
-                'status' => 'Draft',
-                'section' => $section,
-                'new_assessment' => true
-            ]);
-            exit();
         }
     }
 
-    // ── Build SET clause from section ──────────────────────────────────────────
+    // ── Build SET clause from section (same as before) ──────────────────────────
     $sets = [];
 
     if ($section === 's1') {
@@ -279,7 +261,7 @@ if (isset($_POST['ajax_save_section'])) {
             $sets[] = "$f='{$e($_POST[$f]??'')}'";
     }
 
-    // Get current sections_saved
+    // Update sections_saved
     $ss_row = mysqli_fetch_assoc(mysqli_query($conn,
         "SELECT sections_saved FROM integration_assessments WHERE assessment_id=$aid"));
     $ss = json_decode($ss_row['sections_saved'] ?? '[]', true) ?: [];
@@ -297,11 +279,8 @@ if (isset($_POST['ajax_save_section'])) {
     $sets[] = "last_saved_by='$saved_by'";
 
     if (!empty($sets)) {
-        $update_query = "UPDATE integration_assessments SET " . implode(',', $sets) . " WHERE assessment_id=$aid";
-        if (!mysqli_query($conn, $update_query)) {
-            echo json_encode(['success'=>false,'error'=>'Failed to update assessment: ' . mysqli_error($conn)]);
-            exit();
-        }
+        mysqli_query($conn,
+            "UPDATE integration_assessments SET ".implode(',',$sets)." WHERE assessment_id=$aid");
     }
 
     echo json_encode([
@@ -829,7 +808,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             </div>
             <div class="form-group">
                 <label>Q24. Facility has a single unified EMR system?</label>
-                <div class="hint">Select YES if the health facility has a single unified EMR system, or NO if the facility doesn't have.</div>
+                <div class="hint">Select YES if the health facility has a single unified EMR system, or NO if the facility doesn’t have.</div>
                 <p style="font-size: 12px;"><span style="font-weight:bold;">Definition of single unified EMR system:</span></p>
                 <P style="font-size: 12px;">A single unified EMR system refers to a hospital or facility wide EMR system that is the only sole EMR system being used across all the SDPs</p>
                 <p style="font-size: 12px;"><span style="font-style:italic;">(including OPD, IPD, MNCH, CCC, finance and billing management, commodity management etc.).</span></p>
@@ -1394,10 +1373,8 @@ function updateProgress() {
     const total = allSections.length;
     const pct = Math.round(n/total*100);
 
-    const pctEl = document.getElementById('progressPct');
-    const barEl = document.getElementById('progressBar');
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (barEl) barEl.style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+    document.getElementById('progressBar').style.width = pct + '%';
 
     // Update sidebar dots
     allSections.forEach(sk => {
@@ -1405,23 +1382,22 @@ function updateProgress() {
         if (!item) return;
         const saved = sectionsSaved.includes(sk);
         item.className = 'sec-nav-item ' + (saved?'saved':'unsaved');
-        const icon = item.querySelector('.sec-icon i');
-        if (icon) icon.className = 'fas ' + (saved?'fa-check-circle':'fa-circle');
+        item.querySelector('.sec-icon i').className = 'fas ' + (saved?'fa-check-circle':'fa-circle');
     });
 
     // Enable submit when all saved
     const btn = document.getElementById('btnFinalSubmit');
     const txt = document.getElementById('submitProgressText');
-    if (btn && txt) {
-        if (n >= total) {
-            btn.disabled = false;
-            txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved — ready to submit!';
-        } else {
-            btn.disabled = true;
-            txt.innerHTML = `<i class="fas fa-info-circle"></i> ${n} of ${total} sections saved — complete all to enable submission`;
-        }
+    if (n >= total) {
+        btn.disabled = false;
+        txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved — ready to submit!';
+    } else {
+        btn.disabled = true;
+        txt.innerHTML = `<i class="fas fa-info-circle"></i> ${n} of ${total} sections saved — complete all to enable submission`;
     }
 }
+
+updateProgress(); // initial run
 
 // ── Scroll to section ─────────────────────────────────────────────────────────
 function scrollToSection(sk) {
@@ -1436,28 +1412,26 @@ const facResults = document.getElementById('facResults');
 const facSpinner = document.getElementById('facSpinner');
 const facIcon    = document.getElementById('facSearchIcon');
 
-if (facInput) {
-    facInput.addEventListener('input', debounce(async function() {
-        const q = facInput.value.trim();
-        if (q.length < 2) { facResults.style.display='none'; return; }
-        facSpinner.style.display='block'; facIcon.style.display='none';
-        try {
-            const rows = await fetch(`facility_integration_assessment.php?ajax=search_facility&q=${encodeURIComponent(q)}`).then(r=>r.json());
-            facSpinner.style.display='none'; facIcon.style.display='block';
-            if (!rows.length) {
-                facResults.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No facilities found</div>';
-            } else {
-                facResults.innerHTML = rows.map(r =>
-                    `<div class="result-item" onclick='pickFacility(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
-                        <div class="ri-name">${r.facility_name} <span class="ri-badge">${r.mflcode||''}</span></div>
-                        <div class="ri-meta"><i class="fas fa-map-marker-alt" style="color:var(--navy)"></i>
-                            ${r.county_name||''} | ${r.subcounty_name||''} | ${r.level_of_care_name||''}</div>
-                    </div>`).join('');
-            }
-            facResults.style.display = 'block';
-        } catch(e) { facSpinner.style.display='none'; facIcon.style.display='block'; }
-    }, 350));
-}
+facInput.addEventListener('input', debounce(async function() {
+    const q = facInput.value.trim();
+    if (q.length < 2) { facResults.style.display='none'; return; }
+    facSpinner.style.display='block'; facIcon.style.display='none';
+    try {
+        const rows = await fetch(`facility_integration_assessment.php?ajax=search_facility&q=${encodeURIComponent(q)}`).then(r=>r.json());
+        facSpinner.style.display='none'; facIcon.style.display='block';
+        if (!rows.length) {
+            facResults.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No facilities found</div>';
+        } else {
+            facResults.innerHTML = rows.map(r =>
+                `<div class="result-item" onclick='pickFacility(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
+                    <div class="ri-name">${r.facility_name} <span class="ri-badge">${r.mflcode||''}</span></div>
+                    <div class="ri-meta"><i class="fas fa-map-marker-alt" style="color:var(--navy)"></i>
+                        ${r.county_name||''} | ${r.subcounty_name||''} | ${r.level_of_care_name||''}</div>
+                </div>`).join('');
+        }
+        facResults.style.display = 'block';
+    } catch(e) { facSpinner.style.display='none'; facIcon.style.display='block'; }
+}, 350));
 
 async function pickFacility(r) {
     facResults.style.display = 'none';
@@ -1465,57 +1439,28 @@ async function pickFacility(r) {
     facilityData = r;
 
     // Set hidden fields
-    const facilityIdField = document.getElementById('h_facility_id');
-    if (facilityIdField) facilityIdField.value = r.facility_id;
-    const mflField = document.getElementById('h_mflcode');
-    if (mflField) mflField.value = r.mflcode||'';
-    const countyField = document.getElementById('h_county_name');
-    if (countyField) countyField.value = r.county_name||'';
-    const subcountyField = document.getElementById('h_subcounty_name');
-    if (subcountyField) subcountyField.value = r.subcounty_name||'';
-    const ownerField = document.getElementById('h_owner');
-    if (ownerField) ownerField.value = r.owner||'';
-    const sdpField = document.getElementById('h_sdp');
-    if (sdpField) sdpField.value = r.sdp||'';
-    const agencyField = document.getElementById('h_agency');
-    if (agencyField) agencyField.value = r.agency||'';
-    const emrField = document.getElementById('h_emr');
-    if (emrField) emrField.value = r.emr||'';
-    const emrstatusField = document.getElementById('h_emrstatus');
-    if (emrstatusField) emrstatusField.value = r.emrstatus||'';
-    const infraField = document.getElementById('h_infra');
-    if (infraField) infraField.value = r.infrastructuretype||'';
-    const latField = document.getElementById('h_lat');
-    if (latField) latField.value = r.latitude||'';
-    const lngField = document.getElementById('h_lng');
-    if (lngField) lngField.value = r.longitude||'';
-    const levelField = document.getElementById('h_level');
-    if (levelField) levelField.value = r.level_of_care_name||'';
+    document.getElementById('h_facility_id').value   = r.facility_id;
+    document.getElementById('h_mflcode').value        = r.mflcode||'';
+    document.getElementById('h_county_name').value    = r.county_name||'';
+    document.getElementById('h_subcounty_name').value = r.subcounty_name||'';
+    document.getElementById('h_owner').value          = r.owner||'';
+    document.getElementById('h_sdp').value            = r.sdp||'';
+    document.getElementById('h_agency').value         = r.agency||'';
+    document.getElementById('h_emr').value            = r.emr||'';
+    document.getElementById('h_emrstatus').value      = r.emrstatus||'';
+    document.getElementById('h_infra').value          = r.infrastructuretype||'';
+    document.getElementById('h_lat').value            = r.latitude||'';
+    document.getElementById('h_lng').value            = r.longitude||'';
+    document.getElementById('h_level').value          = r.level_of_care_name||'';
 
     // Populate card
-    const nameField = document.getElementById('fc_name');
-    if (nameField) nameField.textContent = r.facility_name;
-    const mflSpan = document.getElementById('fc_mfl');
-    if (mflSpan) mflSpan.textContent = r.mflcode||'—';
-    const countySpan = document.getElementById('fc_county');
-    if (countySpan) countySpan.textContent = r.county_name||'—';
-    const subcountySpan = document.getElementById('fc_subcounty');
-    if (subcountySpan) subcountySpan.textContent = r.subcounty_name||'—';
-    const levelSpan = document.getElementById('fc_level');
-    if (levelSpan) levelSpan.textContent = r.level_of_care_name||'—';
-    const ownerSpan = document.getElementById('fc_owner');
-    if (ownerSpan) ownerSpan.textContent = r.owner||'—';
-    const sdpSpan = document.getElementById('fc_sdp');
-    if (sdpSpan) sdpSpan.textContent = r.sdp||'—';
-    const agencySpan = document.getElementById('fc_agency');
-    if (agencySpan) agencySpan.textContent = r.agency||'—';
-    const emrSpan = document.getElementById('fc_emr');
-    if (emrSpan) emrSpan.textContent = r.emr||'—';
-    const emrstatusSpan = document.getElementById('fc_emrstatus');
-    if (emrstatusSpan) emrstatusSpan.textContent = r.emrstatus||'—';
-
-    const facilityCard = document.getElementById('facilityCard');
-    if (facilityCard) facilityCard.style.display = 'block';
+    ['fc_name','fc_mfl','fc_county','fc_subcounty','fc_level','fc_owner','fc_sdp','fc_agency','fc_emr','fc_emrstatus'].forEach(id => {
+        const map = {fc_name:'facility_name',fc_mfl:'mflcode',fc_county:'county_name',
+            fc_subcounty:'subcounty_name',fc_level:'level_of_care_name',fc_owner:'owner',
+            fc_sdp:'sdp',fc_agency:'agency',fc_emr:'emr',fc_emrstatus:'emrstatus'};
+        document.getElementById(id).textContent = r[map[id]] || '—';
+    });
+    document.getElementById('facilityCard').style.display = 'block';
 
     // Check if assessment exists for selected period
     const period = document.getElementById('assessment_period').value;
@@ -1523,29 +1468,19 @@ async function pickFacility(r) {
 }
 
 function clearFacility() {
-    const facilityIdField = document.getElementById('h_facility_id');
-    if (facilityIdField) facilityIdField.value = '';
-    const facilityCard = document.getElementById('facilityCard');
-    if (facilityCard) facilityCard.style.display = 'none';
-    const facInputEl = document.getElementById('facilitySearch');
-    if (facInputEl) facInputEl.value = '';
+    document.getElementById('h_facility_id').value = '';
+    document.getElementById('facilityCard').style.display = 'none';
+    facInput.value = '';
     facilityData = {};
 }
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('#facSearchWrap')) {
-        const results = document.getElementById('facResults');
-        if (results) results.style.display = 'none';
-    }
+    if (!e.target.closest('#facSearchWrap')) facResults.style.display='none';
 });
-
-const periodSelect = document.getElementById('assessment_period');
-if (periodSelect) {
-    periodSelect.addEventListener('change', async function() {
-        const fid = document.getElementById('h_facility_id')?.value;
-        if (fid && this.value) await checkExistingAssessment(fid, this.value);
-    });
-}
+document.getElementById('assessment_period').addEventListener('change', async function() {
+    const fid = document.getElementById('h_facility_id').value;
+    if (fid && this.value) await checkExistingAssessment(fid, this.value);
+});
 
 // ── Check for existing assessment ─────────────────────────────────────────────
 async function checkExistingAssessment(facilityId, period) {
@@ -1558,94 +1493,69 @@ async function checkExistingAssessment(facilityId, period) {
             const ss = data.sections_saved || [];
             const total = allSections.length;
             const msg = `An assessment for <strong>${data.facility_name}</strong> — <strong>${period}</strong> already exists (ID #${data.assessment_id}, status: <strong>${data.status}</strong>, ${ss.length}/${total} sections saved).`;
-            const modalMsg = document.getElementById('dupModalMsg');
-            if (modalMsg) modalMsg.innerHTML = msg;
-            const editLink = document.getElementById('dupEditLink');
-            if (editLink) editLink.href = `facility_integration_assessment.php?id=${data.assessment_id}`;
+            document.getElementById('dupModalMsg').innerHTML = msg;
+            document.getElementById('dupEditLink').href = `facility_integration_assessment.php?id=${data.assessment_id}`;
 
             // Show section statuses
             const allDefs = <?= json_encode($all_section_defs) ?>;
-            const sectionsStatus = document.getElementById('dupSectionsStatus');
-            if (sectionsStatus) {
-                const html = Object.entries(allDefs).map(([sk,sl]) =>
-                    `<div class="sec-status-item ${ss.includes(sk)?'done':'todo'}">
-                        <i class="fas ${ss.includes(sk)?'fa-check-circle':'fa-times-circle'}"></i>
-                        <span>${sl}</span>
-                    </div>`).join('');
-                sectionsStatus.innerHTML = html;
-            }
-            const modal = document.getElementById('dupModal');
-            if (modal) modal.classList.add('show');
+            const html = Object.entries(allDefs).map(([sk,sl]) =>
+                `<div class="sec-status-item ${ss.includes(sk)?'done':'todo'}">
+                    <i class="fas ${ss.includes(sk)?'fa-check-circle':'fa-times-circle'}"></i>
+                    <span>${sl}</span>
+                </div>`).join('');
+            document.getElementById('dupSectionsStatus').innerHTML = html;
+            document.getElementById('dupModal').classList.add('show');
         }
-    } catch(e) {
-        console.error('Check assessment error:', e);
-    }
+    } catch(e) {}
 }
 
-function closeDupModal() {
-    const modal = document.getElementById('dupModal');
-    if (modal) modal.classList.remove('show');
-}
-
-const dupModal = document.getElementById('dupModal');
-if (dupModal) {
-    dupModal.addEventListener('click', function(e) { if(e.target===this) closeDupModal(); });
-}
+function closeDupModal() { document.getElementById('dupModal').classList.remove('show'); }
+document.getElementById('dupModal').addEventListener('click', function(e) { if(e.target===this) closeDupModal(); });
 
 // ── EMR Yes/No toggle ──────────────────────────────────────────────────────────
-const emrRadios = document.querySelectorAll('input[name="s2c_uses_emr"]');
-emrRadios.forEach(r => {
+document.querySelectorAll('input[name="s2c_uses_emr"]').forEach(r => {
     r.addEventListener('change', function() {
-        const yesSection = document.getElementById('emrYesSection');
-        const noSection = document.getElementById('emrNoSection');
-        if (yesSection) yesSection.style.display = this.value==='Yes'?'block':'none';
-        if (noSection) noSection.style.display = this.value==='No'?'block':'none';
+        document.getElementById('emrYesSection').style.display = this.value==='Yes'?'block':'none';
+        document.getElementById('emrNoSection').style.display  = this.value==='No' ?'block':'none';
     });
 });
 
 let emrCount = 1;
 function addEMR() {
     emrCount++;
-    const repeater = document.getElementById('emrRepeater');
-    if (repeater) {
-        repeater.insertAdjacentHTML('beforeend',
-            `<div class="emr-entry" data-n="${emrCount}">
-                <div class="emr-entry-header">
-                    <span class="emr-num">EMR System ${emrCount}</span>
-                    <button type="button" class="remove-emr" onclick="removeEMR(this)">✕ Remove</button>
-                </div>
-                <div class="form-grid-3">
-                    <div class="form-group"><label>EMR Type / Name</label>
-                        <input type="text" name="s2c_emr_type[]" class="form-control" placeholder="e.g. KenyaEMR"></div>
-                    <div class="form-group"><label>Funded By</label>
-                        <input type="text" name="s2c_emr_funded_by[]" class="form-control" placeholder="e.g. PEPFAR"></div>
-                    <div class="form-group"><label>Date Started</label>
-                        <input type="date" name="s2c_emr_date_started[]" class="form-control"></div>
-                </div>
-            </div>`);
-    }
+    document.getElementById('emrRepeater').insertAdjacentHTML('beforeend',
+        `<div class="emr-entry" data-n="${emrCount}">
+            <div class="emr-entry-header">
+                <span class="emr-num">EMR System ${emrCount}</span>
+                <button type="button" class="remove-emr" onclick="removeEMR(this)">✕ Remove</button>
+            </div>
+            <div class="form-grid-3">
+                <div class="form-group"><label>EMR Type / Name</label>
+                    <input type="text" name="s2c_emr_type[]" class="form-control" placeholder="e.g. KenyaEMR"></div>
+                <div class="form-group"><label>Funded By</label>
+                    <input type="text" name="s2c_emr_funded_by[]" class="form-control" placeholder="e.g. PEPFAR"></div>
+                <div class="form-group"><label>Date Started</label>
+                    <input type="date" name="s2c_emr_date_started[]" class="form-control"></div>
+            </div>
+        </div>`);
 }
 function removeEMR(btn) {
     const entries = document.querySelectorAll('#emrRepeater .emr-entry');
     if (entries.length <= 1) { showToast('At least one EMR entry is required', 'error'); return; }
     btn.closest('.emr-entry').remove();
-    document.querySelectorAll('#emrRepeater .emr-entry').forEach((el,i) => {
-        const numSpan = el.querySelector('.emr-num');
-        if (numSpan) numSpan.textContent = 'EMR System '+(i+1);
-    });
+    document.querySelectorAll('#emrRepeater .emr-entry').forEach((el,i) =>
+        el.querySelector('.emr-num').textContent = 'EMR System '+(i+1));
 }
 
 // ── Save section ──────────────────────────────────────────────────────────────
 async function saveSection(sectionKey) {
-    const fid = document.getElementById('h_facility_id')?.value;
-    const period = document.getElementById('assessment_period')?.value;
+    const fid = document.getElementById('h_facility_id').value;
+    const period = document.getElementById('assessment_period').value;
 
-    if (!fid) { showToast('Please select a facility first', 'error'); document.getElementById('facilitySearch')?.focus(); return; }
-    if (!period) { showToast('Please select an assessment period', 'error'); document.getElementById('assessment_period')?.focus(); return; }
+    if (!fid) { showToast('Please select a facility first', 'error'); document.getElementById('facilitySearch').focus(); return; }
+    if (!period) { showToast('Please select an assessment period', 'error'); document.getElementById('assessment_period').focus(); return; }
 
     const btn = document.querySelector(`#sec_${sectionKey} .btn-save-section`);
-    if (!btn) return;
-
     const origTxt = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
     btn.classList.add('saving');
@@ -1658,25 +1568,14 @@ async function saveSection(sectionKey) {
     fd.append('facility_id', fid);
     fd.append('assessment_period', period);
     fd.append('assessment_id', assessmentId);
-
-    const facilityNameField = document.getElementById('facilitySearch');
-    if (facilityNameField) fd.append('facility_name', facilityNameField.value);
-
-    const collectionDate = document.getElementById('collection_date_input');
-    if (collectionDate) fd.append('collection_date', collectionDate.value);
-
+    fd.append('facility_name', document.getElementById('h_facility_id').value ? facInput.value : '');
+    fd.append('collection_date', document.getElementById('collection_date_input').value);
     // All facility hidden fields
-    const hiddenFields = ['h_mflcode','h_county_name','h_subcounty_name','h_owner','h_sdp','h_agency','h_emr','h_emrstatus','h_infra','h_lat','h_lng','h_level'];
-    hiddenFields.forEach(id => {
-        const field = document.getElementById(id);
-        if (field) {
-            const map = {
-                h_mflcode:'mflcode', h_county_name:'county_name', h_subcounty_name:'subcounty_name',
-                h_owner:'owner', h_sdp:'sdp', h_agency:'agency', h_emr:'emr', h_emrstatus:'emrstatus',
-                h_infra:'infrastructuretype', h_lat:'latitude', h_lng:'longitude', h_level:'level_of_care_name'
-            };
-            fd.append(map[id], field.value);
-        }
+    ['h_mflcode','h_county_name','h_subcounty_name','h_owner','h_sdp','h_agency','h_emr','h_emrstatus','h_infra','h_lat','h_lng','h_level'].forEach(id => {
+        const map = {h_mflcode:'mflcode',h_county_name:'county_name',h_subcounty_name:'subcounty_name',
+            h_owner:'owner',h_sdp:'sdp',h_agency:'agency',h_emr:'emr',h_emrstatus:'emrstatus',
+            h_infra:'infrastructuretype',h_lat:'latitude',h_lng:'longitude',h_level:'level_of_care_name'};
+        fd.append(map[id], document.getElementById(id).value);
     });
 
     // Gather inputs in this section with prefix
@@ -1688,28 +1587,24 @@ async function saveSection(sectionKey) {
     };
     const prefix = PREFIX_MAP[sectionKey] || '';
 
-    if (sec) {
-        const inputs = sec.querySelectorAll('input,select,textarea');
-        for (let i = 0; i < inputs.length; i++) {
-            const el = inputs[i];
-            if (!el.name) continue;
-            if (el.type === 'radio' && !el.checked) continue;
-            if (el.type === 'checkbox') {
-                if (el.checked) fd.append(el.name.replace(prefix,''), el.value);
-                continue;
-            }
-            // Strip section prefix when sending to server
-            const serverName = el.name.startsWith(prefix) ? el.name.replace(prefix,'') : el.name;
-            fd.append(serverName, el.value);
+    // Collect all inputs/selects/textareas in this section
+    sec.querySelectorAll('input,select,textarea').forEach(el => {
+        if (!el.name || el.name.startsWith('h_')) return;
+        if (el.type === 'radio' && !el.checked) return;
+        if (el.type === 'checkbox') {
+            if (el.checked) fd.append(el.name.replace(prefix,''), el.value);
+            return;
         }
-    }
+        // Strip section prefix when sending to server
+        const serverName = el.name.startsWith(prefix) ? el.name.replace(prefix,'') : el.name;
+        fd.append(serverName, el.value);
+    });
 
     try {
         const data = await fetch('facility_integration_assessment.php', {method:'POST', body:fd}).then(r=>r.json());
         if (data.success) {
             assessmentId = data.assessment_id;
-            const hAssessmentId = document.getElementById('h_assessment_id');
-            if (hAssessmentId) hAssessmentId.value = assessmentId;
+            document.getElementById('h_assessment_id').value = assessmentId;
             sectionsSaved = data.sections_saved;
 
             // Update badge
@@ -1722,8 +1617,7 @@ async function saveSection(sectionKey) {
             showToast(data.error || 'Save failed', 'error');
         }
     } catch(e) {
-        console.error('Save error:', e);
-        showToast('Error saving section, check network and please try again', 'error');
+        showToast('Error saving section, check network or complete all responses and please try again', 'error');
     }
 
     btn.innerHTML = origTxt;
@@ -1757,14 +1651,11 @@ async function finalSubmit() {
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        // Find first unsaved section
+        // Find first visible section that isn't saved
         const unsaved = allSections.find(sk => !sectionsSaved.includes(sk));
         if (unsaved) saveSection(unsaved);
     }
 });
-
-// Initialize progress
-updateProgress();
 </script>
 </body>
 </html>

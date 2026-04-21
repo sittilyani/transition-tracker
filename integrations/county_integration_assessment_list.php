@@ -160,12 +160,12 @@ $result = $conn->query($query);
                                 <?= $row['is_completed'] ? '<i class="fas fa-check-circle"></i> Completed' : '<i class="fas fa-clock"></i> In Progress' ?>
                             </span>
                          </td>
-                        <td><?= htmlspecialchars($row['completed_by'] ?? '—') ?></td>
-                        <td><?= $row['completed_at'] ? date('d M Y', strtotime($row['completed_at'])) : '—' ?></td>
+                        <td><?= htmlspecialchars($row['completed_by'] ?? 'ï¿½') ?></td>
+                        <td><?= $row['completed_at'] ? date('d M Y', strtotime($row['completed_at'])) : 'ï¿½' ?></td>
                         <td><?= date('d M Y', strtotime($row['created_at'])) ?></td>
                         <td>
                             <a href="county_integration_assessment.php?county_id=<?= $row['county_id'] ?>&period=<?= urlencode($row['assessment_period']) ?>" class="btn-action btn-edit"><i class="fas fa-edit"></i> Edit</a>
-                            <a href="view_county_integration.php?id=<?= $row['assessment_id'] ?>" class="btn-action btn-view"><i class="fas fa-eye"></i> View</a>
+                            <a href="view_county_integration_assessment.php?id=<?= $row['assessment_id'] ?>" class="btn-action btn-view"><i class="fas fa-eye"></i> View</a>
                          </td>
                     </tr>
                     <?php endwhile; else: ?>
