@@ -283,7 +283,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
     <span id="overallScores" style="font-size:14px;color:#666"></span>
 </div>
 
-<div class="section-title"><i class="fas fa-chart-bar"></i> CDOH Score Distribution per Section</div>
+<!--<div class="section-title"><i class="fas fa-chart-bar"></i> CDOH Score Distribution per Section</div>
 <div class="card" style="margin-bottom:22px">
     <div class="card-head">
         <h3><i class="fas fa-layer-group"></i> Score Level Distribution by Section (% of sub-indicators)</h3>
@@ -296,7 +296,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f7;
         </div>
     </div>
     <div class="card-body"><div style="height:380px"><canvas id="stackedChart"></canvas></div></div>
-</div>
+</div>-->
 
 <div class="section-title"><i class="fas fa-chart-bar"></i> CDOH vs IP — Cluster Bars per Section</div>
 <div class="card" style="margin-bottom:22px">

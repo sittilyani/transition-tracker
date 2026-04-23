@@ -220,12 +220,13 @@ if (isset($_POST['ajax_save_section'])) {
     $oi_raw = $ov['avg_ip_raw']   !== null ? (float)$ov['avg_ip_raw']   : 0;
     $total_scored = (int)$ov['total_scored'];
 
-    $oc_pct = $total_scored > 0 ? min(100, round(($oc_raw / 4) * 100)) : 0;
+    $oc_pct = $total_scored > 0 ? round(($oc_raw / 4) * 100) : 0;
     $rd = $oc_pct >= 70 ? 'Transition' : ($oc_pct >= 50 ? 'Support and Monitor' : 'Not Ready');
 
     mysqli_query($conn,
         "UPDATE transition_assessments
-         SET assessment_status='Draft', readiness_level='$rd'
+         SET assessment_status='Draft', readiness_level='$rd',
+             last_saved_at=NOW(), last_saved_by='$assessed_by'
          WHERE assessment_id=$aid");
 
     // Get updated sections list
@@ -241,9 +242,9 @@ if (isset($_POST['ajax_save_section'])) {
         'section_key'    => $section_key,
         'saved'          => $saved,
         'submitted_at'   => date('d M Y H:i'),
-        'avg_cdoh_pct'   => $avg_c_val !== 'NULL' ? min(100, round((float)$avg_c_val/4*100)) : 0,
-        'avg_ip_pct'     => $avg_i_val !== 'NULL' ? min(100, round((float)$avg_i_val/4*100)) : 0,
-        'overall_cdoh_pct'=> min(100, $oc_pct),
+        'avg_cdoh_pct'   => $avg_c_val !== 'NULL' ? round((float)$avg_c_val/4*100) : 0,
+        'avg_ip_pct'     => $avg_i_val !== 'NULL' ? round((float)$avg_i_val/4*100) : 0,
+        'overall_cdoh_pct'=> $oc_pct,
         'readiness_level' => $rd,
         'sections_saved'  => array_keys($all_ss),
         'section_data'    => $all_ss
@@ -262,13 +263,14 @@ if (isset($_POST['ajax_submit'])) {
              FROM transition_raw_scores WHERE assessment_id=$aid"));
         $oc_raw = $ov['avg_cdoh_raw'] !== null ? (float)$ov['avg_cdoh_raw'] : 0;
         $total_scored = (int)$ov['total_scored'];
-        $oc_pct = $total_scored > 0 ? min(100, round(($oc_raw / 4) * 100)) : 0;
+        $oc_pct = $total_scored > 0 ? round(($oc_raw / 4) * 100) : 0;
         $rd = $oc_pct >= 70 ? 'Transition' : ($oc_pct >= 50 ? 'Support and Monitor' : 'Not Ready');
 
         mysqli_query($conn,
             "UPDATE transition_assessments
              SET assessment_status='Submitted', readiness_level='$rd',
-                 submitted_at=NOW(), submitted_by='".mysqli_real_escape_string($conn,$collected_by)."'
+                 submitted_at=NOW(), submitted_by='".mysqli_real_escape_string($conn,$collected_by)."',
+                 last_saved_at=NOW(), last_saved_by='".mysqli_real_escape_string($conn,$collected_by)."'
              WHERE assessment_id=$aid");
         echo json_encode(['success'=>true,'redirect'=>'transition_dashboard.php?county='.$_POST['county_id']]);
     } else {
@@ -1723,10 +1725,10 @@ function updateProgress() {
     if (btn && txt && !isReadOnly) {
         if (n >= total) {
             btn.disabled = false;
-            txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved ? ready to submit!';
+            txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved – ready to submit!';
         } else {
             btn.disabled = true;
-            txt.innerHTML = '<i class="fas fa-info-circle"></i> ' + n + ' of ' + total + ' sections saved ? complete all to enable submission';
+            txt.innerHTML = '<i class="fas fa-info-circle"></i> ' + n + ' of ' + total + ' sections saved – complete all to enable submission';
         }
     }
 }
@@ -1763,7 +1765,7 @@ async function loadAssessment() {
             const total = allSections.length;
             const ss = data.sections_saved || [];
             document.getElementById('dupModalMsg').innerHTML =
-                'An assessment for <strong>' + data.county_name + '</strong> ? <strong>' + period + '</strong> already exists<br>' +
+                'An assessment for <strong>' + data.county_name + '</strong> – <strong>' + period + '</strong> already exists<br>' +
                 '(ID #' + data.assessment_id + ', status: <strong>' + data.status + '</strong>, readiness: <strong>' + (data.readiness_level || 'Not Rated') + '</strong>)';
 
             let html = '';
@@ -1772,7 +1774,7 @@ async function loadAssessment() {
                 const sData = data.section_data?.[sk];
                 html += '<div class="sec-status-item ' + (ss.includes(sk)?'done':'todo') + '">' +
                     '<i class="fas ' + (ss.includes(sk)?'fa-check-circle':'fa-times-circle') + '"></i>' +
-                    '<span>' + sl + (sData ? ' (CDOH: ' + Math.min(100, Math.round((sData.avg_cdoh||0)/4*100)) + '%)' : '') + '</span>' +
+                    '<span>' + sl + (sData ? ' (CDOH: ' + Math.round((sData.avg_cdoh||0)/4*100) + '%)' : '') + '</span>' +
                 '</div>';
             }
             document.getElementById('dupSectionsStatus').innerHTML = html;
@@ -1908,7 +1910,7 @@ async function saveSection(sectionKey) {
         }
     } catch(e) {
         console.error('Save error:', e);
-        showToast('Error saving section ? please try again', 'error');
+        showToast('Error saving section – please try again', 'error');
     } finally {
         btn.innerHTML = origTxt;
         btn.classList.remove('saving');
@@ -1941,7 +1943,7 @@ async function finalSubmit() {
             showToast(data.error || 'Submission failed', 'error');
         }
     } catch(e) {
-        showToast('Network error ? please try again', 'error');
+        showToast('Network error – please try again', 'error');
     }
 }
 

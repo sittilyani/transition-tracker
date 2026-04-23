@@ -408,8 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-container">
-
-        <img src="../assets/images/transition-logo.png" width="102" height="102" alt="">
+        <img src="../assets/images/vuga_logo3_nbg.png" width="612" height="408" alt="">
         <h4>Welcome Back</h4>
         <p style="color: #666; margin-bottom: 25px;">Please login to your account</p>
 

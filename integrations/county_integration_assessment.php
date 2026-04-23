@@ -1,5 +1,6 @@
 <?php
 // integrations/county_integration_assessment.php
+// integrations/county_integration_assessment.php
 session_start();
 include('../includes/config.php');
 include('../includes/session_check.php');
@@ -8,29 +9,6 @@ if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit(); }
 
 $collected_by = $_SESSION['full_name'] ?? '';
 $uid = (int)$_SESSION['user_id'];
-
-// Determine if this is view mode or edit mode
-$edit_mode = isset($_GET['edit']) || !isset($_GET['id']);
-$view_only = isset($_GET['id']) && !isset($_GET['edit']);
-
-// For view mode, check if assessment exists and set read-only
-if ($view_only && isset($_GET['id'])) {
-    $check_id = (int)$_GET['id'];
-    $check_query = mysqli_query($conn, "SELECT assessment_status, is_completed FROM county_integration_assessments WHERE assessment_id = $check_id");
-    if ($check_row = mysqli_fetch_assoc($check_query)) {
-        $assessment_status = $check_row['assessment_status'];
-        $is_completed = $check_row['is_completed'];
-        $user_role = $_SESSION['role'] ?? '';
-        $is_admin = in_array($user_role, ['Admin', 'Super Admin']);
-
-        // If submitted/completed and not admin, force view-only mode
-        if (($assessment_status === 'Submitted' || $is_completed == 1) && !$is_admin) {
-            $view_only = true;
-            $edit_mode = false;
-            $_SESSION['warning_msg'] = 'This assessment has been completed and can only be viewed. Contact an administrator to edit.';
-        }
-    }
-}
 
 // -- AJAX: check existing county assessment ------------------------------------
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'check_assessment') {
@@ -59,15 +37,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'check_assessment') {
     exit();
 }
 
-// -- AJAX: save a single section (only if not view-only) ----------------------
+// -- AJAX: save a single section (Simplified for clarity) ----------------------
 if (isset($_POST['ajax_save_section'])) {
-    // Check if this is view-only mode
-    if ($view_only) {
-        header('Content-Type: application/json');
-        echo json_encode(['success'=>false,'error'=>'Cannot save in view-only mode']);
-        exit();
-    }
-
     header('Content-Type: application/json');
     $section    = mysqli_real_escape_string($conn, $_POST['section_key'] ?? '');
     $cid        = (int)($_POST['county_id'] ?? 0);
@@ -94,29 +65,18 @@ if (isset($_POST['ajax_save_section'])) {
             $county_name = $e($_POST['county_name'] ?? '');
             $agency_id   = $i($_POST['agency_id'] ?? 0);
             $agency_name = $e($_POST['agency_name'] ?? '');
-            $ip_ids      = $e($_POST['ip_ids'] ?? $_POST['ip_ids_json'] ?? '[]');
-            $ip_names    = $e($_POST['ip_names'] ?? $_POST['ip_names_json'] ?? '[]');
+            $ip_id       = $i($_POST['ip_id'] ?? 0);
+            $ip_name     = $e($_POST['ip_name'] ?? '');
             $cd          = $e($_POST['collection_date'] ?? date('Y-m-d'));
             $adate       = date('Y-m-d');
 
             mysqli_query($conn,
                 "INSERT INTO county_integration_assessments
-                 (county_id, county_name, assessment_period, assessment_date, agency_id, agency_name, ip_ids, ip_names,
+                 (county_id, county_name, assessment_period, assessment_date, agency_id, agency_name, ip_id, ip_name,
                   assessment_status, sections_saved, collected_by, collection_date, is_completed)
-                 VALUES ($cid, '$county_name', '$period', '$adate', $agency_id, '$agency_name', '$ip_ids', '$ip_names',
+                 VALUES ($cid, '$county_name', '$period', '$adate', $agency_id, '$agency_name', $ip_id, '$ip_name',
                          'Draft', '[]', '$saved_by', '$cd', 0)");
             $aid = (int)mysqli_insert_id($conn);
-
-            // Return the new assessment ID immediately
-            echo json_encode([
-                'success' => true,
-                'assessment_id' => $aid,
-                'sections_saved' => [],
-                'status' => 'Draft',
-                'section' => $section,
-                'new_assessment' => true
-            ]);
-            exit();
         }
     }
 
@@ -129,10 +89,8 @@ if (isset($_POST['ajax_save_section'])) {
         $sets[] = "county_name='{$e($_POST['county_name']??'')}'";
         $sets[] = "agency_id={$i($_POST['agency_id']??0)}";
         $sets[] = "agency_name='{$e($_POST['agency_name']??'')}'";
-        $ip_ids = $e($_POST['ip_ids'] ?? $_POST['ip_ids_json'] ?? '[]');
-        $ip_names = $e($_POST['ip_names'] ?? $_POST['ip_names_json'] ?? '[]');
-        $sets[] = "ip_ids='$ip_ids'";
-        $sets[] = "ip_names='$ip_names'";
+        $sets[] = "ip_id={$i($_POST['ip_id']??0)}";
+        $sets[] = "ip_name='{$e($_POST['ip_name']??'')}'";
     }
 
     // Section 2a: Integration of HIV/TB Services
@@ -307,14 +265,8 @@ if (isset($_POST['ajax_save_section'])) {
     exit();
 }
 
-// -- AJAX: final submit (only if not view-only) ---------------------------------
+// -- AJAX: final submit --------------------------------------------------------
 if (isset($_POST['ajax_submit'])) {
-    if ($view_only) {
-        header('Content-Type: application/json');
-        echo json_encode(['success'=>false,'error'=>'Cannot submit in view-only mode']);
-        exit();
-    }
-
     header('Content-Type: application/json');
     $aid = (int)($_POST['assessment_id'] ?? 0);
     if ($aid) {
@@ -330,23 +282,21 @@ if (isset($_POST['ajax_submit'])) {
     exit();
 }
 
-// -- Load existing assessment if editing or viewing ----------------------------
+// -- Load existing assessment if editing ---------------------------------------
 $edit_id = (int)($_GET['id'] ?? 0);
 $existing = null;
 $sections_saved = [];
-$is_readonly = $view_only;
+
+// NEW: Check for new assessment parameters from URL
+$new_county_id = (int)($_GET['county_id'] ?? 0);
+$new_period = $_GET['period'] ?? '';
+$new_county_name = $_GET['county_name'] ?? '';
 
 if ($edit_id) {
     $existing = mysqli_fetch_assoc(mysqli_query($conn,
         "SELECT * FROM county_integration_assessments WHERE assessment_id=$edit_id LIMIT 1"));
     if ($existing) {
         $sections_saved = json_decode($existing['sections_saved'] ?? '[]', true) ?: [];
-
-        // If assessment is completed and user is not admin, force read-only
-        if (($existing['assessment_status'] === 'Submitted' || $existing['is_completed'] == 1) &&
-            !in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'])) {
-            $is_readonly = true;
-        }
     }
 }
 
@@ -363,17 +313,7 @@ $ips_r = mysqli_query($conn, "SELECT ip_id, ip_name FROM implementing_partners O
 $ips = [];
 if ($ips_r) while ($r = mysqli_fetch_assoc($ips_r)) $ips[] = $r;
 
-// Parse existing IPs for multi-select
-$selected_ip_ids = [];
-if (!empty($existing['ip_ids'])) {
-    $selected_ip_ids = json_decode($existing['ip_ids'], true);
-    if (!is_array($selected_ip_ids)) {
-        // Try comma-separated format
-        $selected_ip_ids = array_filter(explode(',', $existing['ip_ids']));
-    }
-}
-
-// -- All section definitions for progress tracking ----------------------------
+// -- All section definitions for progress tracking -----------------------------
 $all_section_defs = [
     's1'  => 'Section 1: County Profile',
     's2a' => 'Section 2a: HIV/TB Services Integration',
@@ -397,16 +337,16 @@ $all_section_defs = [
 function v($key, $existing) { return htmlspecialchars($existing[$key] ?? ''); }
 function sel($key, $val, $existing) { return ($existing[$key] ?? '') === $val ? 'selected' : ''; }
 function chk($key, $val, $existing) { return ($existing[$key] ?? '') === $val ? 'checked' : ''; }
-function is_readonly_attr($is_readonly) { return $is_readonly ? 'readonly disabled' : ''; }
 
 $e_data = $existing ?? [];
-// When a new assessment is started via ?county_id=X&period=Y redirect, read from GET
-$pre_county_id   = (int)($e_data['county_id']          ?? $_GET['county_id'] ?? 0);
-$pre_county_name = (string)($e_data['county_name']     ?? urldecode($_GET['county_name'] ?? ''));
-$pre_period      = (string)($e_data['assessment_period'] ?? urldecode($_GET['period']     ?? ''));
-// Show the form if editing an existing record OR if county+period were selected
-$show_form = ($edit_id && $existing) || ($pre_county_id && $pre_period);
-$page_title = $view_only ? 'View Assessment' : ($edit_id ? 'Edit Assessment' : 'New Assessment');
+
+// MODIFIED: Check both existing assessment OR new assessment parameters
+$pre_county_id = $e_data['county_id'] ?? $new_county_id;
+$pre_county_name = $e_data['county_name'] ?? $new_county_name;
+$pre_period = $e_data['assessment_period'] ?? $new_period;
+
+// MODIFIED: Show form if editing existing OR starting new with valid params
+$show_form = ($edit_id && $existing) || ($new_county_id && $new_period);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -503,33 +443,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg
 .form-control,.form-select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;
     font-size:13px;transition:.2s;background:#fff;font-family:inherit;}
 .form-control:focus,.form-select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(13,26,99,.08);}
-.form-control[readonly]{background:#f8f9fc;color:#666;}
 textarea.form-control{min-height:80px;resize:vertical;}
-
-/* Multi-select for IPs */
-.select2-container--default .select2-selection--multiple {
-    border: 1.5px solid var(--border);
-    border-radius: 7px;
-    padding: 4px;
-}
-.select2-container--default.select2-container--focus .select2-selection--multiple {
-    border-color: var(--navy);
-}
-.ms-options {
-    width: 100% !important;
-}
-.ms-options-wrap > button {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 7px;
-    background: #fff;
-    text-align: left;
-}
-.ms-options-wrap > .ms-options {
-    border-radius: 7px;
-    border-color: var(--border);
-}
 
 /* Radio / checkbox */
 .yn-group{display:flex;gap:16px;margin-top:5px;flex-wrap:wrap;}
@@ -597,50 +511,6 @@ textarea.form-control{min-height:80px;resize:vertical;}
 @media(max-width:960px){.layout{grid-template-columns:1fr;}.sidebar{position:static;}}
 @media(max-width:640px){.form-grid,.form-grid-3{grid-template-columns:1fr;}}
 </style>
-<!-- Custom multi-select styles (no external dependency) -->
-<style>
-.ip-multiselect-wrap { position: relative; }
-.ip-multiselect-btn {
-    width: 100%; padding: 9px 36px 9px 12px; border: 1.5px solid var(--border);
-    border-radius: 7px; font-size: 13px; background: #fff; cursor: pointer;
-    text-align: left; font-family: inherit; transition: .2s; color: #374151;
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.ip-multiselect-btn:focus, .ip-multiselect-btn.open { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(13,26,99,.08); }
-.ip-multiselect-btn .btn-arrow { font-size: 11px; color: #aaa; flex-shrink: 0; transition: transform .2s; }
-.ip-multiselect-btn.open .btn-arrow { transform: rotate(180deg); }
-.ip-tag-list { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
-.ip-tag {
-    background: var(--navy); color: #fff; font-size: 11px; font-weight: 600;
-    padding: 2px 8px; border-radius: 20px; display: flex; align-items: center; gap: 5px;
-}
-.ip-tag .ip-tag-remove { cursor: pointer; opacity: .75; font-size: 10px; }
-.ip-tag .ip-tag-remove:hover { opacity: 1; }
-.ip-multiselect-dropdown {
-    display: none; position: absolute; z-index: 500; top: calc(100% + 4px); left: 0; right: 0;
-    background: #fff; border: 1.5px solid #dce3f5; border-radius: 10px;
-    box-shadow: 0 8px 28px rgba(13,26,99,.15); max-height: 260px; overflow: hidden;
-    flex-direction: column;
-}
-.ip-multiselect-dropdown.open { display: flex; }
-.ip-dropdown-search {
-    padding: 8px 10px; border-bottom: 1px solid var(--border);
-}
-.ip-dropdown-search input {
-    width: 100%; padding: 6px 10px; border: 1.5px solid var(--border);
-    border-radius: 6px; font-size: 12px; font-family: inherit;
-}
-.ip-dropdown-search input:focus { outline: none; border-color: var(--navy); }
-.ip-dropdown-list { overflow-y: auto; flex: 1; padding: 4px 0; }
-.ip-option {
-    display: flex; align-items: center; gap: 10px; padding: 8px 14px;
-    cursor: pointer; font-size: 13px; transition: .1s;
-}
-.ip-option:hover { background: #f0f3fb; }
-.ip-option input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; }
-.ip-option.selected { background: #eef1ff; color: var(--navy); font-weight: 600; }
-.ip-placeholder { color: #aaa; font-style: italic; }
-</style>
 </head>
 <body>
 <div class="wrap">
@@ -652,7 +522,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <a href="county_integration_assessment_list.php"><i class="fas fa-list"></i> All Assessments</a>
         <?php if ($edit_id): ?>
         <span style="background:rgba(255,255,255,.2);padding:7px 14px;border-radius:8px;font-size:13px;">
-            <?= $view_only ? 'Viewing' : 'Editing' ?> #<?= $edit_id ?>
+            Editing #<?= $edit_id ?>
         </span>
         <?php endif; ?>
     </div>
@@ -662,39 +532,32 @@ textarea.form-control{min-height:80px;resize:vertical;}
 
 <!-- Setup Card -->
 <div class="setup-card">
-    <h3><i class="fas fa-cog"></i> Select County and Assessment Period</h3>
+    <h3><i class="fas fa-cog"></i> Select County and Period</h3>
     <div class="setup-grid">
         <div class="setup-field">
-            <label>County <span class="req">*</span></label>
+            <label>County</label>
             <select id="countySelect">
                 <option value="">Select County</option>
                 <?php foreach ($counties as $c): ?>
                 <option value="<?= $c['county_id'] ?>" data-name="<?= htmlspecialchars($c['county_name']) ?>"
-                    <?= $pre_county_id==$c['county_id']?'selected':'' ?>>
-                    <?= htmlspecialchars($c['county_name']) ?> (<?= $c['county_code'] ?>)
-                </option>
+                    <?= $pre_county_id==$c['county_id']?'selected':'' ?>><?= htmlspecialchars($c['county_name']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="setup-field">
-            <label>Assessment Period <span class="req">*</span></label>
+            <label>Period</label>
             <select id="periodSelect">
                 <option value="">Select Period</option>
-                <?php
-                $periods = ['Oct-Dec 2025','Jan-Mar 2026','Apr-Jun 2026','Jul-Sep 2026','Oct-Dec 2026'];
-                foreach ($periods as $p): ?>
+                <?php $ps = ['Oct-Dec 2025', 'Jan-Mar 2026','Apr-Jun 2026','Jul-Sep 2026','Oct-Dec 2026'];
+                foreach ($ps as $p): ?>
                 <option value="<?= $p ?>" <?= $pre_period===$p?'selected':'' ?>><?= $p ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <button class="btn-load" id="btnLoad" onclick="loadAssessment()">
-                <i class="fas fa-arrow-right"></i> Load or Start
-            </button>
-        </div>
+        <button class="btn-load" id="btnLoad" onclick="loadAssessment()"><i class="fas fa-arrow-right"></i> Load or Start</button>
     </div>
 
-    <div class="county-card" id="countyCard" <?= ($pre_county_id && $pre_period && $show_form) ? 'style="display:block"' : '' ?>>
+    <div class="county-card" id="countyCard" <?= $show_form ? 'style="display:block"' : '' ?>>
         <div class="county-card-header">
             <div class="county-card-name">
                 <i class="fas fa-map-marker-alt" style="color:var(--teal)"></i>
@@ -752,7 +615,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>1. County <span class="req">*</span></label>
                 <div class="hint">Indicate the Name of the County</div>
-                <select name="s1_county_id" id="s1_county_id" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s1_county_id" id="s1_county_id" class="form-select">
                     <option value="">Select County</option>
                     <?php foreach ($counties as $c): ?>
                     <option value="<?= $c['county_id'] ?>" data-name="<?= htmlspecialchars($c['county_name']) ?>"
@@ -765,7 +628,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>2a. Implementing Agency</label>
                 <div class="hint">Select the Name of the Implementing Agency (DOS, CDC, DOW, GF)</div>
-                <select name="s1_agency_id" id="s1_agency_id" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s1_agency_id" id="s1_agency_id" class="form-select">
                     <option value="">Select Agency</option>
                     <?php foreach ($agencies as $a): ?>
                     <option value="<?= $a['agency_id'] ?>" data-name="<?= htmlspecialchars($a['agency_name']) ?>"
@@ -776,57 +639,20 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 </select>
             </div>
             <div class="form-group">
-                <label>2b. Implementing Partner(s) <span class="req">*</span></label>
-                <div class="hint">Select one or more Implementing Partners supporting the county</div>
-
-                <?php if ($is_readonly): ?>
-                    <?php
-                    $ip_display = [];
-                    foreach ($ips as $ip) {
-                        if (in_array($ip['ip_id'], $selected_ip_ids)) $ip_display[] = htmlspecialchars($ip['ip_name']);
-                    }
-                    ?>
-                    <div class="form-control" style="background:#f8f9fc;color:#666;min-height:40px;">
-                        <?= $ip_display ? implode(', ', $ip_display) : '<em style="color:#aaa">None selected</em>' ?>
-                    </div>
-                <?php else: ?>
-                <!-- Hidden input stores JSON for form submission -->
-                <input type="hidden" id="s1_ip_ids_json" name="s1_ip_ids_json" value="">
-                <input type="hidden" id="s1_ip_names_json" name="s1_ip_names_json" value="">
-
-                <div class="ip-multiselect-wrap" id="ipMultiWrap">
-                    <button type="button" class="ip-multiselect-btn" id="ipMultiBtn" onclick="toggleIpDropdown()">
-                        <span class="ip-tag-list" id="ipTagList">
-                            <span class="ip-placeholder" id="ipPlaceholder">Select implementing partners</span>
-                        </span>
-                        <span class="btn-arrow"><i class="fas fa-chevron-down"></i></span>
-                    </button>
-                    <div class="ip-multiselect-dropdown" id="ipDropdown">
-                        <div class="ip-dropdown-search">
-                            <input type="text" placeholder="Search partners…" id="ipSearchInput" oninput="filterIpOptions(this.value)">
-                        </div>
-                        <div class="ip-dropdown-list" id="ipOptionList">
-                            <?php foreach ($ips as $ip): ?>
-                            <label class="ip-option <?= in_array($ip['ip_id'], $selected_ip_ids) ? 'selected' : '' ?>"
-                                   data-id="<?= $ip['ip_id'] ?>"
-                                   data-name="<?= htmlspecialchars($ip['ip_name']) ?>">
-                                <input type="checkbox"
-                                       value="<?= $ip['ip_id'] ?>"
-                                       data-name="<?= htmlspecialchars($ip['ip_name']) ?>"
-                                       <?= in_array($ip['ip_id'], $selected_ip_ids) ? 'checked' : '' ?>
-                                       onchange="onIpChange()">
-                                <?= htmlspecialchars($ip['ip_name']) ?>
-                            </label>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
+                <label>2b. Implementing Partner</label>
+                <div class="hint">Select the Name of the Implementing Partner</div>
+                <select name="s1_ip_id" id="s1_ip_id" class="form-select">
+                    <option value="">Select Implementing Partner</option>
+                    <?php foreach ($ips as $ip): ?>
+                    <option value="<?= $ip['ip_id'] ?>" data-name="<?= htmlspecialchars($ip['ip_name']) ?>"
+                        <?= ($e_data['ip_id']??0)==$ip['ip_id']?'selected':'' ?>>
+                        <?= htmlspecialchars($ip['ip_name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s1')"><i class="fas fa-save"></i> Save Section 1</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -844,22 +670,20 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <label>3. Does the County have a HIV Prevention, HIV/TB and PMTCT integration in OPD/Clinical care model plan?</label>
                 <div class="hint">Please select YES, if the County has Integrated HIV/TB services within OPD or clinical care model, or NO if it has not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_plan" value="Yes" <?= chk('hiv_tb_integration_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_plan" value="No" <?= chk('hiv_tb_integration_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_plan" value="Yes" <?= chk('hiv_tb_integration_plan','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_plan" value="No" <?= chk('hiv_tb_integration_plan','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>4. Has the County held HIV Prevention, HIV/TB and PMTCT service integration meeting in the last 3 months?</label>
                 <div class="hint">Please select YES, if the County held HIV/TB service integration meeting in the last 3 months</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_meeting" value="Yes" <?= chk('hiv_tb_integration_meeting','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_meeting" value="No" <?= chk('hiv_tb_integration_meeting','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_meeting" value="Yes" <?= chk('hiv_tb_integration_meeting','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s2a_hiv_tb_integration_meeting" value="No" <?= chk('hiv_tb_integration_meeting','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s2a')"><i class="fas fa-save"></i> Save Section 2a</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -876,53 +700,51 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>5. Which EMR type has the county selected for facility-wide deployment?</label>
                 <div class="hint">Please select the EMR type that the county selected for facility-wide deployment</div>
-                <select name="s2b_selected_emr_type" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s2b_selected_emr_type" class="form-select">
                     <option value="">Select EMR Type</option>
-                    <?php foreach(['KenyaEMR','TIBU','AfyaKE','OpenMRS','Other'] as $opt): ?>
+                    <?php foreach(['KenyaEMR','Tiberbu','AfyaKE','Other'] as $opt): ?>
                     <option value="<?= $opt ?>" <?= sel('selected_emr_type',$opt,$e_data) ?>><?= $opt ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group">
                 <label>6. Other EMR, Please Specify</label>
-                <div class="hint">Please specify the other EMR in use</div>
-                <input type="text" name="s2b_other_emr_specify" class="form-control" value="<?= v('other_emr_specify',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>>
+                <div class="hint">Please specify if choice above is other EMR </div>
+                <input type="text" name="s2b_other_emr_specify" class="form-control" value="<?= v('other_emr_specify',$e_data) ?>">
             </div>
             <div class="form-group">
                 <label>7. Has the County had meetings on EMR facility-wide deployment in the last 3 months?</label>
                 <div class="hint">Please select YES, if the County has had meetings on EMR facility-wide deployment in the last 3 months, or NO if not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s2b_emr_deployment_meetings" value="Yes" <?= chk('emr_deployment_meetings','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s2b_emr_deployment_meetings" value="No" <?= chk('emr_deployment_meetings','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_emr_deployment_meetings" value="Yes" <?= chk('emr_deployment_meetings','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_emr_deployment_meetings" value="No" <?= chk('emr_deployment_meetings','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>8. Does the county have a standard systems integration guide (e.g. FHIR) in place for hospital wide HIS integration?</label>
                 <div class="hint">Please select YES if there is a standard Systems integration guide/FHIR guide in place for hospital wide HIS integration, or NO if not available.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s2b_has_his_integration_guide" value="Yes" <?= chk('has_his_integration_guide','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s2b_has_his_integration_guide" value="No" <?= chk('has_his_integration_guide','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_has_his_integration_guide" value="Yes" <?= chk('has_his_integration_guide','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_has_his_integration_guide" value="No" <?= chk('has_his_integration_guide','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>9. Does the county have a dedicated technical staff supporting HIS needs?</label>
                 <div class="hint">Please select YES if the county has dedicated technical staff supporting HIS needs, or NO if not available</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s2b_has_dedicated_his_staff" value="Yes" <?= chk('has_dedicated_his_staff','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s2b_has_dedicated_his_staff" value="No" <?= chk('has_dedicated_his_staff','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_has_dedicated_his_staff" value="Yes" <?= chk('has_dedicated_his_staff','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s2b_has_dedicated_his_staff" value="No" <?= chk('has_dedicated_his_staff','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s2b')"><i class="fas fa-save"></i> Save Section 2b</button>
-        <?php endif; ?>
     </div>
 </div>
 
 <!-- SECTION 3: HRH TRANSITION -->
 <div class="form-section" id="sec_s3">
     <div class="section-head">
-        <div class="section-head-left"><i class="fas fa-users"></i> Section 3: HRH Transition (Workforce Absorption)</div>
+        <div class="section-head-left"> Section 3: HRH Transition (Workforce Absorption)</div>
         <div class="section-head-right">
             <span class="saved-badge <?= in_array('s3',$sections_saved)?'show':'' ?>" id="badge_s3"><i class="fas fa-check"></i> Saved</span>
         </div>
@@ -932,33 +754,31 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <label>10. Does the County have a HRH transition plan for absorption of PEPFAR IP supported staff?</label>
             <div class="hint">Please select YES if the County has a HRH transition plan for absorption of PEPFAR IP supported staff, or NO if not</div>
             <div class="yn-group">
-                <label class="yn-opt"><input type="radio" name="s3_has_hrh_transition_plan" value="Yes" <?= chk('has_hrh_transition_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                <label class="yn-opt"><input type="radio" name="s3_has_hrh_transition_plan" value="No" <?= chk('has_hrh_transition_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                <label class="yn-opt"><input type="radio" name="s3_has_hrh_transition_plan" value="Yes" <?= chk('has_hrh_transition_plan','Yes',$e_data) ?>> Yes</label>
+                <label class="yn-opt"><input type="radio" name="s3_has_hrh_transition_plan" value="No" <?= chk('has_hrh_transition_plan','No',$e_data) ?>> No</label>
             </div>
         </div>
 
-        <div class="sub-label" style="margin-top:20px"><i class="fas fa-chart-line"></i> HCWs Supported by PEPFAR IP in the County</div>
+        <div class="sub-label" style="margin-top:20px"> HCWs Supported by PEPFAR IP in the County</div>
         <div class="form-grid-3">
-            <div class="form-group"><label>11. Total HCWs supported by PEPFAR IP</label><input type="number" name="s3_hcw_total_pepfar" class="form-control" value="<?= v('hcw_total_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>12. Clinical Staff</label><input type="number" name="s3_hcw_clinical_pepfar" class="form-control" value="<?= v('hcw_clinical_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>13. Non Clinical Staff</label><input type="number" name="s3_hcw_nonclinical_pepfar" class="form-control" value="<?= v('hcw_nonclinical_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>14. Data Staff</label><input type="number" name="s3_hcw_data_pepfar" class="form-control" value="<?= v('hcw_data_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>15. Community Staff</label><input type="number" name="s3_hcw_community_pepfar" class="form-control" value="<?= v('hcw_community_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>16. Other Staff</label><input type="number" name="s3_hcw_other_pepfar" class="form-control" value="<?= v('hcw_other_pepfar',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>11. Total HCWs supported by PEPFAR IP</label><input type="number" name="s3_hcw_total_pepfar" class="form-control" value="<?= v('hcw_total_pepfar',$e_data) ?>"></div>
+            <div class="form-group"><label>12. Clinical Staff</label><input type="number" name="s3_hcw_clinical_pepfar" class="form-control" value="<?= v('hcw_clinical_pepfar',$e_data) ?>"></div>
+            <div class="form-group"><label>13. Non Clinical Staff</label><input type="number" name="s3_hcw_nonclinical_pepfar" class="form-control" value="<?= v('hcw_nonclinical_pepfar',$e_data) ?>"></div>
+            <div class="form-group"><label>14. Data Staff</label><input type="number" name="s3_hcw_data_pepfar" class="form-control" value="<?= v('hcw_data_pepfar',$e_data) ?>"></div>
+            <div class="form-group"><label>15. Community Staff</label><input type="number" name="s3_hcw_community_pepfar" class="form-control" value="<?= v('hcw_community_pepfar',$e_data) ?>"></div>
+            <div class="form-group"><label>16. Other Staff</label><input type="number" name="s3_hcw_other_pepfar" class="form-control" value="<?= v('hcw_other_pepfar',$e_data) ?>"></div>
         </div>
 
-        <div class="sub-label" style="margin-top:20px"><i class="fas fa-exchange-alt"></i> HCWs Transitioned to County Support (Payroll)</div>
+        <div class="sub-label" style="margin-top:20px">HCWs Transitioned to County Support (Payroll)</div>
         <div class="form-grid-3">
-            <div class="form-group"><label>17. Total HCWs Transitioned</label><input type="number" name="s3_hcw_transitioned_total" class="form-control" value="<?= v('hcw_transitioned_total',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>18. Clinical Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_clinical" class="form-control" value="<?= v('hcw_transitioned_clinical',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>19. Non Clinical Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_nonclinical" class="form-control" value="<?= v('hcw_transitioned_nonclinical',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>20. Data Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_data" class="form-control" value="<?= v('hcw_transitioned_data',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>21. Community Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_community" class="form-control" value="<?= v('hcw_transitioned_community',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>22. Other Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_other" class="form-control" value="<?= v('hcw_transitioned_other',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>17. Total HCWs Transitioned</label><input type="number" name="s3_hcw_transitioned_total" class="form-control" value="<?= v('hcw_transitioned_total',$e_data) ?>"></div>
+            <div class="form-group"><label>18. Clinical Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_clinical" class="form-control" value="<?= v('hcw_transitioned_clinical',$e_data) ?>"></div>
+            <div class="form-group"><label>19. Non Clinical Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_nonclinical" class="form-control" value="<?= v('hcw_transitioned_nonclinical',$e_data) ?>"></div>
+            <div class="form-group"><label>20. Data Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_data" class="form-control" value="<?= v('hcw_transitioned_data',$e_data) ?>"></div>
+            <div class="form-group"><label>21. Community Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_community" class="form-control" value="<?= v('hcw_transitioned_community',$e_data) ?>"></div>
+            <div class="form-group"><label>22. Other Staff Transitioned</label><input type="number" name="s3_hcw_transitioned_other" class="form-control" value="<?= v('hcw_transitioned_other',$e_data) ?>"></div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s3')"><i class="fas fa-save"></i> Save Section 3</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -976,22 +796,20 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <label>23. Does the County have a plan for PLHIV and PBFW enrolment into SHA?</label>
                 <div class="hint">Please select YES, if the County has a plan for PLHIV enrollment in SHA, or NO if not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s4_has_plhiv_sha_plan" value="Yes" <?= chk('has_plhiv_sha_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s4_has_plhiv_sha_plan" value="No" <?= chk('has_plhiv_sha_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s4_has_plhiv_sha_plan" value="Yes" <?= chk('has_plhiv_sha_plan','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s4_has_plhiv_sha_plan" value="No" <?= chk('has_plhiv_sha_plan','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>24. Has the County held a meeting to review progress on PLHIV and PBFW enrolment into SHA in the last 3 months?</label>
                 <div class="hint">Please select YES, if the County held a meeting to review progress on PLHIV enrollment in SHA in the last 3 months, or NO if not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s4_plhiv_sha_review_meeting" value="Yes" <?= chk('plhiv_sha_review_meeting','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s4_plhiv_sha_review_meeting" value="No" <?= chk('plhiv_sha_review_meeting','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s4_plhiv_sha_review_meeting" value="Yes" <?= chk('plhiv_sha_review_meeting','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s4_plhiv_sha_review_meeting" value="No" <?= chk('plhiv_sha_review_meeting','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s4')"><i class="fas fa-save"></i> Save Section 4</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1009,14 +827,14 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <label>25. Does the County have a plan for providing TA/Mentorship for HIV Prevention, HIV/TB, PMTCT and MNCH services in the absence of PEPFAR?</label>
                 <div class="hint">Please select YES if the County has a plan for providing TA/Mentorship for HIV/TB services in the absence of PEPFAR, or NO if not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s5_has_ta_mentorship_plan" value="Yes" <?= chk('has_ta_mentorship_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s5_has_ta_mentorship_plan" value="No" <?= chk('has_ta_mentorship_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s5_has_ta_mentorship_plan" value="Yes" <?= chk('has_ta_mentorship_plan','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s5_has_ta_mentorship_plan" value="No" <?= chk('has_ta_mentorship_plan','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>26. What is the current county support for the county-led mentorships across the facilities?</label>
                 <div class="hint">Please select the current county support for the county-led mentorships across the facilities</div>
-                <select name="s5_county_mentorship_support" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s5_county_mentorship_support" class="form-select">
                     <option value="">Select Support Type</option>
                     <?php foreach(['Personnel TA Mentorship','Logistical support','Financial support','No support'] as $opt): ?>
                     <option value="<?= $opt ?>" <?= sel('county_mentorship_support',$opt,$e_data) ?>><?= $opt ?></option>
@@ -1026,12 +844,12 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>27. If Personnel TA/Mentorship support, please specify the teams involved</label>
                 <div class="hint">Please specify the teams involved in providing County-led mentorship/TA</div>
-                <input type="text" name="s5_mentorship_teams_involved" class="form-control" value="<?= v('mentorship_teams_involved',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>>
+                <input type="text" name="s5_mentorship_teams_involved" class="form-control" value="<?= v('mentorship_teams_involved',$e_data) ?>">
             </div>
             <div class="form-group">
                 <label>28. If Logistical support, please specify the source</label>
                 <div class="hint">Please specify whether the logistical support was from the County, IP, or Both</div>
-                <select name="s5_logistical_support_source" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s5_logistical_support_source" class="form-select">
                     <option value="">Select Source</option>
                     <?php foreach(['County','IP','Both'] as $opt): ?>
                     <option value="<?= $opt ?>" <?= sel('logistical_support_source',$opt,$e_data) ?>><?= $opt ?></option>
@@ -1042,27 +860,25 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 <label>29. Is the County using standardized MOH tools (National or County) for their TA/mentorship?</label>
                 <div class="hint">Please select Yes if the County uses standardized MOH tools for their TA/mentorship, or No if not</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s5_uses_standardized_moh_tools" value="Yes" <?= chk('uses_standardized_moh_tools','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s5_uses_standardized_moh_tools" value="No" <?= chk('uses_standardized_moh_tools','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s5_uses_standardized_moh_tools" value="Yes" <?= chk('uses_standardized_moh_tools','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s5_uses_standardized_moh_tools" value="No" <?= chk('uses_standardized_moh_tools','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>30. How many health facilities has the county visited for TA/Mentorship in the last 3 months?</label>
                 <div class="hint">Indicate the number of health facilities visited for TA/Mentorship on HIV prevention, HIV/TB Services and PMTCT services in the last 3 months</div>
-                <input type="number" name="s5_facilities_visited_ta" class="form-control" value="<?= v('facilities_visited_ta',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>>
+                <input type="number" name="s5_facilities_visited_ta" class="form-control" value="<?= v('facilities_visited_ta',$e_data) ?>">
             </div>
             <div class="form-group">
                 <label>31. Has the County held a meeting to review progress on implementation of County-led TA/Mentorship in the last 3 months?</label>
                 <div class="hint">Please select YES, if the County held a meeting to review progress on implementation of County-led TA/Mentorship, or NO if not.</div>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s5_ta_review_meeting" value="Yes" <?= chk('ta_review_meeting','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s5_ta_review_meeting" value="No" <?= chk('ta_review_meeting','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s5_ta_review_meeting" value="Yes" <?= chk('ta_review_meeting','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s5_ta_review_meeting" value="No" <?= chk('ta_review_meeting','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s5')"><i class="fas fa-save"></i> Save Section 5</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1092,14 +908,14 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label><?= $q[0] ?>. <?= $q[2] ?></label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s6_<?= $q[1] ?>" value="Yes" <?= chk($q[1],'Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s6_<?= $q[1] ?>" value="No" <?= chk($q[1],'No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s6_<?= $q[1] ?>" value="Yes" <?= chk($q[1],'Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s6_<?= $q[1] ?>" value="No" <?= chk($q[1],'No',$e_data) ?>> No</label>
                 </div>
             </div>
             <?php endforeach; ?>
             <div class="form-group">
                 <label>41. If Yes above, who is supporting the quarterly assessments using the SPI checklist?</label>
-                <select name="s6_rtcqi_support_source" class="form-select" <?= is_readonly_attr($is_readonly) ?>>
+                <select name="s6_rtcqi_support_source" class="form-select">
                     <option value="">Select Support Source</option>
                     <?php foreach(['Partner','County','GOK'] as $opt): ?>
                     <option value="<?= $opt ?>" <?= sel('rtcqi_support_source',$opt,$e_data) ?>><?= $opt ?></option>
@@ -1107,9 +923,7 @@ textarea.form-control{min-height:80px;resize:vertical;}
                 </select>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s6')"><i class="fas fa-save"></i> Save Section 6</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1126,34 +940,32 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>42. Does the County have TB diagnostic TWG?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s7_has_tb_diagnostic_twg" value="Yes" <?= chk('has_tb_diagnostic_twg','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s7_has_tb_diagnostic_twg" value="No" <?= chk('has_tb_diagnostic_twg','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s7_has_tb_diagnostic_twg" value="Yes" <?= chk('has_tb_diagnostic_twg','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s7_has_tb_diagnostic_twg" value="No" <?= chk('has_tb_diagnostic_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>43. Number of TB diagnostic TWG activities supported by the County</label><input type="number" name="s7_tb_twg_activities_count" class="form-control" value="<?= v('tb_twg_activities_count',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>44. Number of HCW reached with County led TB diagnostics capacity building activities</label><input type="number" name="s7_hcw_reached_tb_training" class="form-control" value="<?= v('hcw_reached_tb_training',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>43. Number of TB diagnostic TWG activities supported by the County</label><input type="number" name="s7_tb_twg_activities_count" class="form-control" value="<?= v('tb_twg_activities_count',$e_data) ?>"></div>
+            <div class="form-group"><label>44. Number of HCW reached with County led TB diagnostics capacity building activities</label><input type="number" name="s7_hcw_reached_tb_training" class="form-control" value="<?= v('hcw_reached_tb_training',$e_data) ?>"></div>
             <div class="form-group">
                 <label>45. Does the County have chest X-ray services fully integrated into their annual work plans?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s7_chest_xray_in_awp" value="Yes" <?= chk('chest_xray_in_awp','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s7_chest_xray_in_awp" value="No" <?= chk('chest_xray_in_awp','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s7_chest_xray_in_awp" value="Yes" <?= chk('chest_xray_in_awp','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s7_chest_xray_in_awp" value="No" <?= chk('chest_xray_in_awp','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>46. Number of chest X-ray machines with valid KNRA operating licenses</label><input type="number" name="s7_cxr_machines_licensed" class="form-control" value="<?= v('cxr_machines_licensed',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>47. Number of functional chest X-ray machines</label><input type="number" name="s7_cxr_machines_functional" class="form-control" value="<?= v('cxr_machines_functional',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>48. Number of functional chest X-ray machines enabled with AI for TB screening</label><input type="number" name="s7_cxr_machines_ai_enabled" class="form-control" value="<?= v('cxr_machines_ai_enabled',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>49. Number of health facilities using chest x-ray for TB screening</label><input type="number" name="s7_facilities_using_cxr_tb" class="form-control" value="<?= v('facilities_using_cxr_tb',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>46. Number of chest X-ray machines with valid KNRA operating licenses</label><input type="number" name="s7_cxr_machines_licensed" class="form-control" value="<?= v('cxr_machines_licensed',$e_data) ?>"></div>
+            <div class="form-group"><label>47. Number of functional chest X-ray machines</label><input type="number" name="s7_cxr_machines_functional" class="form-control" value="<?= v('cxr_machines_functional',$e_data) ?>"></div>
+            <div class="form-group"><label>48. Number of functional chest X-ray machines enabled with AI for TB screening</label><input type="number" name="s7_cxr_machines_ai_enabled" class="form-control" value="<?= v('cxr_machines_ai_enabled',$e_data) ?>"></div>
+            <div class="form-group"><label>49. Number of health facilities using chest x-ray for TB screening</label><input type="number" name="s7_facilities_using_cxr_tb" class="form-control" value="<?= v('facilities_using_cxr_tb',$e_data) ?>"></div>
             <div class="form-group">
                 <label>50. Does the County support routine QA/QC for chest X-Ray images by radiologists?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s7_cxr_qa_qc_supported" value="Yes" <?= chk('cxr_qa_qc_supported','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s7_cxr_qa_qc_supported" value="No" <?= chk('cxr_qa_qc_supported','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s7_cxr_qa_qc_supported" value="Yes" <?= chk('cxr_qa_qc_supported','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s7_cxr_qa_qc_supported" value="No" <?= chk('cxr_qa_qc_supported','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s7')"><i class="fas fa-save"></i> Save Section 7</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1170,53 +982,51 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>51. Does the County have a HIV Care and Treatment/TB TWG?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_tb_twg" value="Yes" <?= chk('has_hiv_tb_twg','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_tb_twg" value="No" <?= chk('has_hiv_tb_twg','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_tb_twg" value="Yes" <?= chk('has_hiv_tb_twg','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_tb_twg" value="No" <?= chk('has_hiv_tb_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>52. Number of C&T/TB TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_hiv_tb_twg_meetings" class="form-control" value="<?= v('hiv_tb_twg_meetings',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>52. Number of C&T/TB TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_hiv_tb_twg_meetings" class="form-control" value="<?= v('hiv_tb_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>53. Does the County have a PMTCT TWG?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_has_pmtct_twg" value="Yes" <?= chk('has_pmtct_twg','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_has_pmtct_twg" value="No" <?= chk('has_pmtct_twg','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_pmtct_twg" value="Yes" <?= chk('has_pmtct_twg','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_pmtct_twg" value="No" <?= chk('has_pmtct_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>54. Number of PMTCT TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_pmtct_twg_meetings" class="form-control" value="<?= v('pmtct_twg_meetings',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>54. Number of PMTCT TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_pmtct_twg_meetings" class="form-control" value="<?= v('pmtct_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>55. Does the County have a MNCH TWG?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_has_mnch_twg" value="Yes" <?= chk('has_mnch_twg','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_has_mnch_twg" value="No" <?= chk('has_mnch_twg','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_mnch_twg" value="Yes" <?= chk('has_mnch_twg','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_mnch_twg" value="No" <?= chk('has_mnch_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>56. Number of MNCH TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_mnch_twg_meetings" class="form-control" value="<?= v('mnch_twg_meetings',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>56. Number of MNCH TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_mnch_twg_meetings" class="form-control" value="<?= v('mnch_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>57. Does the County have a HIV Prevention TWG?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_prevention_twg" value="Yes" <?= chk('has_hiv_prevention_twg','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_prevention_twg" value="No" <?= chk('has_hiv_prevention_twg','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_prevention_twg" value="Yes" <?= chk('has_hiv_prevention_twg','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_hiv_prevention_twg" value="No" <?= chk('has_hiv_prevention_twg','No',$e_data) ?>> No</label>
                 </div>
             </div>
-            <div class="form-group"><label>58. Number of HIV Prevention TWG meetings conducted (Oct 24 - Sep 25)</label><input type="number" name="s8_hiv_prevention_twg_meetings" class="form-control" value="<?= v('hiv_prevention_twg_meetings',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>58. Number of HIV Prevention TWG meetings conducted (Jan 26 - Mar 26)</label><input type="number" name="s8_hiv_prevention_twg_meetings" class="form-control" value="<?= v('hiv_prevention_twg_meetings',$e_data) ?>"></div>
             <div class="form-group">
                 <label>59. Is there a functional County integration oversight team and/or County HIV transition team?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_has_integration_oversight_team" value="Yes" <?= chk('has_integration_oversight_team','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_has_integration_oversight_team" value="No" <?= chk('has_integration_oversight_team','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_integration_oversight_team" value="Yes" <?= chk('has_integration_oversight_team','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_has_integration_oversight_team" value="No" <?= chk('has_integration_oversight_team','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>60. In the last 3 months, has the integration oversight team held a meeting?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s8_integration_oversight_meeting" value="Yes" <?= chk('integration_oversight_meeting','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s8_integration_oversight_meeting" value="No" <?= chk('integration_oversight_meeting','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s8_integration_oversight_meeting" value="Yes" <?= chk('integration_oversight_meeting','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s8_integration_oversight_meeting" value="No" <?= chk('integration_oversight_meeting','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s8')"><i class="fas fa-save"></i> Save Section 8</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1233,21 +1043,19 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>61. Does the County have FIF collection plan that has incorporated HIV Prevention, HIV/TB, PMTCT and MNCH services?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s9_has_fif_collection_plan" value="Yes" <?= chk('has_fif_collection_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s9_has_fif_collection_plan" value="No" <?= chk('has_fif_collection_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s9_has_fif_collection_plan" value="Yes" <?= chk('has_fif_collection_plan','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s9_has_fif_collection_plan" value="No" <?= chk('has_fif_collection_plan','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>62. Does the County receive SHA capitation for HIV Prevention, HIV/TB, PMTCT and MNCH services?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s9_receives_sha_capitation" value="Yes" <?= chk('receives_sha_capitation','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s9_receives_sha_capitation" value="No" <?= chk('receives_sha_capitation','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s9_receives_sha_capitation" value="Yes" <?= chk('receives_sha_capitation','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s9_receives_sha_capitation" value="No" <?= chk('receives_sha_capitation','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s9')"><i class="fas fa-save"></i> Save Section 9</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1264,18 +1072,16 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>63. Does the County have a stakeholder engagement plan for HIV Prevention, HIV/TB, PMTCT and MNCH service integration?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s10_has_stakeholder_engagement_plan" value="Yes" <?= chk('has_stakeholder_engagement_plan','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s10_has_stakeholder_engagement_plan" value="No" <?= chk('has_stakeholder_engagement_plan','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s10_has_stakeholder_engagement_plan" value="Yes" <?= chk('has_stakeholder_engagement_plan','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s10_has_stakeholder_engagement_plan" value="No" <?= chk('has_stakeholder_engagement_plan','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>64. Number of multi-stakeholder engagement transition review meetings conducted in the last 3 months</label>
-                <input type="number" name="s10_stakeholder_meetings_count" class="form-control" value="<?= v('stakeholder_meetings_count',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>>
+                <input type="number" name="s10_stakeholder_meetings_count" class="form-control" value="<?= v('stakeholder_meetings_count',$e_data) ?>">
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s10')"><i class="fas fa-save"></i> Save Section 10</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1289,13 +1095,11 @@ textarea.form-control{min-height:80px;resize:vertical;}
     </div>
     <div class="section-body">
         <div class="form-group">
-            <label>65. Number of days free of maternal deaths in the quarter (Oct 25 - Dec 25)</label>
+            <label>65. Number of days free of maternal deaths in the quarter (Jan 26 - Mar 26)</label>
             <div class="hint">Indicate the number of days that maternal deaths were not reported. Should be less than or equal to 92 days.</div>
-            <input type="number" name="s11_days_without_maternal_deaths" class="form-control" min="0" max="92" value="<?= v('days_without_maternal_deaths',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>>
+            <input type="number" name="s11_days_without_maternal_deaths" class="form-control" min="0" max="92" value="<?= v('days_without_maternal_deaths',$e_data) ?>">
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s11')"><i class="fas fa-save"></i> Save Section 11</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1309,12 +1113,10 @@ textarea.form-control{min-height:80px;resize:vertical;}
     </div>
     <div class="section-body">
         <div class="form-grid">
-            <div class="form-group"><label>66. Number of AHD hubs available in the County</label><input type="number" name="s12_ahd_hubs_available" class="form-control" value="<?= v('ahd_hubs_available',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
-            <div class="form-group"><label>67. Number of AHD hubs activated to provide care for AHD</label><input type="number" name="s12_ahd_hubs_activated" class="form-control" value="<?= v('ahd_hubs_activated',$e_data) ?>" <?= is_readonly_attr($is_readonly) ?>></div>
+            <div class="form-group"><label>66. Number of AHD hubs available in the County</label><input type="number" name="s12_ahd_hubs_available" class="form-control" value="<?= v('ahd_hubs_available',$e_data) ?>"></div>
+            <div class="form-group"><label>67. Number of AHD hubs activated to provide care for AHD</label><input type="number" name="s12_ahd_hubs_activated" class="form-control" value="<?= v('ahd_hubs_activated',$e_data) ?>"></div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s12')"><i class="fas fa-save"></i> Save Section 12</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1331,21 +1133,19 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>68. Does the County have an HIV service integration oversight team?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s13_has_hiv_integration_oversight" value="Yes" <?= chk('has_hiv_integration_oversight','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s13_has_hiv_integration_oversight" value="No" <?= chk('has_hiv_integration_oversight','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s13_has_hiv_integration_oversight" value="Yes" <?= chk('has_hiv_integration_oversight','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s13_has_hiv_integration_oversight" value="No" <?= chk('has_hiv_integration_oversight','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>69. In the last 3 months, has the HIV service integration oversight team held a meeting?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s13_integration_oversight_meeting_held" value="Yes" <?= chk('integration_oversight_meeting_held','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s13_integration_oversight_meeting_held" value="No" <?= chk('integration_oversight_meeting_held','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s13_integration_oversight_meeting_held" value="Yes" <?= chk('integration_oversight_meeting_held','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s13_integration_oversight_meeting_held" value="No" <?= chk('integration_oversight_meeting_held','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s13')"><i class="fas fa-save"></i> Save Section 13</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1362,35 +1162,33 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>70. Does the county have the Health Products and Technologies Unit (HPTU)?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s14_has_hpt_unit" value="Yes" <?= chk('has_hpt_unit','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s14_has_hpt_unit" value="No" <?= chk('has_hpt_unit','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s14_has_hpt_unit" value="Yes" <?= chk('has_hpt_unit','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s14_has_hpt_unit" value="No" <?= chk('has_hpt_unit','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>71. In the last 3 months, has the county HPT TWG held a meeting?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s14_hpt_twg_meeting_held" value="Yes" <?= chk('hpt_twg_meeting_held','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s14_hpt_twg_meeting_held" value="No" <?= chk('hpt_twg_meeting_held','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s14_hpt_twg_meeting_held" value="Yes" <?= chk('hpt_twg_meeting_held','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s14_hpt_twg_meeting_held" value="No" <?= chk('hpt_twg_meeting_held','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>72. Does the county have a valid Forecasting and Quantification report for HPTs?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s14_has_valid_fq_report" value="Yes" <?= chk('has_valid_fq_report','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s14_has_valid_fq_report" value="No" <?= chk('has_valid_fq_report','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s14_has_valid_fq_report" value="Yes" <?= chk('has_valid_fq_report','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s14_has_valid_fq_report" value="No" <?= chk('has_valid_fq_report','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>73. Does the county organize regular training for supply chain staff in forecasting, quantification, and inventory management?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s14_provides_supply_chain_training" value="Yes" <?= chk('provides_supply_chain_training','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s14_provides_supply_chain_training" value="No" <?= chk('provides_supply_chain_training','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s14_provides_supply_chain_training" value="Yes" <?= chk('provides_supply_chain_training','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s14_provides_supply_chain_training" value="No" <?= chk('provides_supply_chain_training','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s14')"><i class="fas fa-save"></i> Save Section 14</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1407,28 +1205,26 @@ textarea.form-control{min-height:80px;resize:vertical;}
             <div class="form-group">
                 <label>74. Has the county incorporated HIV/TB services into its Primary Health Care (PHC) plans/budgets?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s15_hiv_tb_in_phc_plans" value="Yes" <?= chk('hiv_tb_in_phc_plans','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s15_hiv_tb_in_phc_plans" value="No" <?= chk('hiv_tb_in_phc_plans','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s15_hiv_tb_in_phc_plans" value="Yes" <?= chk('hiv_tb_in_phc_plans','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s15_hiv_tb_in_phc_plans" value="No" <?= chk('hiv_tb_in_phc_plans','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>75. In the last 3 months, has the County held meetings to review implementation of HIV/TB service incorporation in its PHC plans?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s15_phc_hiv_review_meeting" value="Yes" <?= chk('phc_hiv_review_meeting','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s15_phc_hiv_review_meeting" value="No" <?= chk('phc_hiv_review_meeting','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s15_phc_hiv_review_meeting" value="Yes" <?= chk('phc_hiv_review_meeting','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s15_phc_hiv_review_meeting" value="No" <?= chk('phc_hiv_review_meeting','No',$e_data) ?>> No</label>
                 </div>
             </div>
             <div class="form-group">
                 <label>76. Has the county operationalized PHC-based service delivery models (e.g., integrated OPD care, chronic care models) for HIV/TB services?</label>
                 <div class="yn-group">
-                    <label class="yn-opt"><input type="radio" name="s15_phc_service_delivery_operationalized" value="Yes" <?= chk('phc_service_delivery_operationalized','Yes',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> Yes</label>
-                    <label class="yn-opt"><input type="radio" name="s15_phc_service_delivery_operationalized" value="No" <?= chk('phc_service_delivery_operationalized','No',$e_data) ?> <?= is_readonly_attr($is_readonly) ?>> No</label>
+                    <label class="yn-opt"><input type="radio" name="s15_phc_service_delivery_operationalized" value="Yes" <?= chk('phc_service_delivery_operationalized','Yes',$e_data) ?>> Yes</label>
+                    <label class="yn-opt"><input type="radio" name="s15_phc_service_delivery_operationalized" value="No" <?= chk('phc_service_delivery_operationalized','No',$e_data) ?>> No</label>
                 </div>
             </div>
         </div>
-        <?php if (!$is_readonly): ?>
         <button type="button" class="btn-save-section" onclick="saveSection('s15')"><i class="fas fa-save"></i> Save Section 15</button>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1451,14 +1247,13 @@ textarea.form-control{min-height:80px;resize:vertical;}
             </div>
             <div class="form-group">
                 <label>Date of Data Collection</label>
-                <input type="date" id="collection_date_input" class="form-control" value="<?= v('collection_date',$e_data) ?: date('Y-m-d') ?>" <?= is_readonly_attr($is_readonly) ?>>
+                <input type="date" id="collection_date_input" class="form-control" value="<?= v('collection_date',$e_data) ?: date('Y-m-d') ?>">
             </div>
         </div>
     </div>
 </div>
 
-<!-- Submit Zone (only show if not view-only and not completed) -->
-<?php if (!$is_readonly && !($existing['is_completed'] ?? 0) && !($existing['assessment_status'] === 'Submitted')): ?>
+<!-- Submit Zone -->
 <div class="submit-zone">
     <div class="submit-progress" id="submitProgressText">
         <i class="fas fa-info-circle"></i> Save all sections to unlock final submission
@@ -1467,7 +1262,6 @@ textarea.form-control{min-height:80px;resize:vertical;}
         <i class="fas fa-paper-plane"></i> Submit Final Assessment
     </button>
 </div>
-<?php endif; ?>
 
 </div><!-- /mainForm -->
 </div><!-- /layout -->
@@ -1508,94 +1302,6 @@ textarea.form-control{min-height:80px;resize:vertical;}
 let assessmentId   = <?= $edit_id ?: 0 ?>;
 let sectionsSaved  = <?= json_encode($sections_saved) ?>;
 const allSections  = <?= json_encode(array_keys($all_section_defs)) ?>;
-const isReadOnly = <?= $is_readonly ? 'true' : 'false' ?>;
-
-// -- Custom IP multi-select ----------------------------------------------------
-(function initIpMultiselect() {
-    // Rebuild tag display and sync hidden inputs from current checkbox state
-    function syncIpState() {
-        const checks  = document.querySelectorAll('#ipOptionList input[type="checkbox"]');
-        const ids     = [];
-        const names   = [];
-        checks.forEach(cb => {
-            if (cb.checked) {
-                ids.push(cb.value);
-                names.push(cb.dataset.name || cb.closest('label')?.dataset.name || '');
-            }
-            // Highlight selected rows
-            const row = cb.closest('.ip-option');
-            if (row) row.classList.toggle('selected', cb.checked);
-        });
-
-        // Update hidden inputs
-        const hiddenIds   = document.getElementById('s1_ip_ids_json');
-        const hiddenNames = document.getElementById('s1_ip_names_json');
-        if (hiddenIds)   hiddenIds.value   = JSON.stringify(ids);
-        if (hiddenNames) hiddenNames.value = JSON.stringify(names);
-
-        // Rebuild tag list
-        const tagList     = document.getElementById('ipTagList');
-        const placeholder = document.getElementById('ipPlaceholder');
-        if (!tagList) return;
-
-        // Remove old tags
-        tagList.querySelectorAll('.ip-tag').forEach(t => t.remove());
-
-        if (ids.length === 0) {
-            if (placeholder) placeholder.style.display = '';
-        } else {
-            if (placeholder) placeholder.style.display = 'none';
-            names.forEach((n, i) => {
-                const tag = document.createElement('span');
-                tag.className = 'ip-tag';
-                tag.innerHTML = `${n} <span class="ip-tag-remove" data-id="${ids[i]}" onclick="removeIpTag(event,this)">?</span>`;
-                tagList.appendChild(tag);
-            });
-        }
-    }
-
-    window.onIpChange = syncIpState;
-
-    window.removeIpTag = function(e, el) {
-        e.stopPropagation();
-        const id = el.dataset.id;
-        const cb = document.querySelector(`#ipOptionList input[value="${id}"]`);
-        if (cb) { cb.checked = false; syncIpState(); }
-    };
-
-    window.toggleIpDropdown = function() {
-        const dd  = document.getElementById('ipDropdown');
-        const btn = document.getElementById('ipMultiBtn');
-        if (!dd) return;
-        const open = dd.classList.toggle('open');
-        btn.classList.toggle('open', open);
-        if (open) {
-            const si = document.getElementById('ipSearchInput');
-            if (si) si.focus();
-        }
-    };
-
-    window.filterIpOptions = function(q) {
-        const lower = q.toLowerCase();
-        document.querySelectorAll('#ipOptionList .ip-option').forEach(row => {
-            row.style.display = row.dataset.name.toLowerCase().includes(lower) ? '' : 'none';
-        });
-    };
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        const wrap = document.getElementById('ipMultiWrap');
-        if (wrap && !wrap.contains(e.target)) {
-            const dd  = document.getElementById('ipDropdown');
-            const btn = document.getElementById('ipMultiBtn');
-            if (dd)  dd.classList.remove('open');
-            if (btn) btn.classList.remove('open');
-        }
-    });
-
-    // Initial sync (pre-selected IPs from PHP)
-    syncIpState();
-})();
 
 function showToast(msg, type='success') {
     const t = document.getElementById('toast');
@@ -1627,13 +1333,13 @@ function updateProgress() {
 
     const btn = document.getElementById('btnFinalSubmit');
     const txt = document.getElementById('submitProgressText');
-    if (btn && txt && !isReadOnly) {
+    if (btn && txt) {
         if (n >= total) {
             btn.disabled = false;
-            txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved ? ready to submit!';
+            txt.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green)"></i> All sections saved — ready to submit!';
         } else {
             btn.disabled = true;
-            txt.innerHTML = '<i class="fas fa-info-circle"></i> ' + n + ' of ' + total + ' sections saved ? complete all to enable submission';
+            txt.innerHTML = '<i class="fas fa-info-circle"></i> ' + n + ' of ' + total + ' sections saved — complete all to enable submission';
         }
     }
 }
@@ -1643,13 +1349,14 @@ function scrollToSection(sk) {
     if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// FIXED: Corrected typo from 'aasync' to 'async'
 async function loadAssessment() {
     const cid = document.getElementById('countySelect').value;
-    const cname = document.getElementById('countySelect').options[document.getElementById('countySelect').selectedIndex]?.getAttribute('data-name') || '';
+    const cname = document.getElementById('countySelect').options[document.getElementById('countySelect').selectedIndex].getAttribute('data-name');
     const period = document.getElementById('periodSelect').value;
 
     if (!cid || !period) {
-        showToast('Please select both a County and an Assessment Period', 'error');
+        alert('Please select both a County and an Assessment Period.');
         return;
     }
 
@@ -1661,38 +1368,24 @@ async function loadAssessment() {
         const response = await fetch(`county_integration_assessment.php?ajax=check_assessment&county_id=${cid}&period=${encodeURIComponent(period)}`);
         const data = await response.json();
 
-        if (data.exists) {
-            if (data.is_completed) {
-                showToast('This assessment is already completed and can only be viewed', 'error');
-                window.location.href = `county_integration_assessment.php?id=${data.assessment_id}`;
-            } else {
-                // Show modal for existing incomplete assessment
-                const total = allSections.length;
-                const ss = data.sections_saved || [];
-                document.getElementById('dupModalMsg').innerHTML =
-                    'An assessment for <strong>' + cname + '</strong> ? <strong>' + period + '</strong> already exists<br>' +
-                    '(ID #' + data.assessment_id + ', status: <strong>' + data.status + '</strong>, ' + ss.length + '/' + total + ' sections saved)';
+        // Bind selection to hidden fields
+        document.getElementById('h_county_id').value = cid;
+        document.getElementById('h_period').value = period;
 
-                const allLabels = <?= json_encode($all_section_defs) ?>;
-                let html = '';
-                for (const [sk, sl] of Object.entries(allLabels)) {
-                    html += '<div class="sec-status-item ' + (ss.includes(sk)?'done':'todo') + '">' +
-                        '<i class="fas ' + (ss.includes(sk)?'fa-check-circle':'fa-times-circle') + '"></i>' +
-                        '<span>' + sl + '</span>' +
-                    '</div>';
-                }
-                document.getElementById('dupSectionsStatus').innerHTML = html;
-                document.getElementById('dupEditLink').href = `county_integration_assessment.php?id=${data.assessment_id}`;
-                document.getElementById('dupModal').classList.add('show');
-            }
+        if (data.exists) {
+            // Existing record: Load by ID
+            window.location.href = `county_integration_assessment.php?id=${data.assessment_id}`;
         } else {
-            // No existing assessment - create new by redirecting with parameters
-            window.location.href = `county_integration_assessment.php?county_id=${cid}&period=${encodeURIComponent(period)}&county_name=${encodeURIComponent(cname)}`;
+            // No record: Proceed by passing selection to the URL to trigger the form
+            const params = new URLSearchParams();
+            params.set('county_id', cid);
+            params.set('period', period);
+            params.set('county_name', cname);
+            window.location.href = `county_integration_assessment.php?${params.toString()}`;
         }
     } catch (e) {
         console.error(e);
-        showToast('An error occurred while checking for existing assessment', 'error');
-    } finally {
+        alert('An error occurred while checking for existing assessment.');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-arrow-right"></i> Load or Start';
     }
@@ -1711,11 +1404,6 @@ if (modal) {
 }
 
 async function saveSection(sectionKey) {
-    if (isReadOnly) {
-        showToast('Cannot save in view-only mode', 'error');
-        return;
-    }
-
     const cid = document.getElementById('h_county_id')?.value;
     const period = document.getElementById('h_period')?.value;
 
@@ -1743,7 +1431,7 @@ async function saveSection(sectionKey) {
     // Section 1 data
     const countySelect = document.getElementById('s1_county_id');
     const agencySelect = document.getElementById('s1_agency_id');
-    const ipSelect = document.getElementById('s1_ip_ids_json');
+    const ipSelect = document.getElementById('s1_ip_id');
 
     if (countySelect) {
         const selectedOption = countySelect.options[countySelect.selectedIndex];
@@ -1755,11 +1443,9 @@ async function saveSection(sectionKey) {
         fd.append('agency_name', selectedOption?.getAttribute('data-name') || '');
     }
     if (ipSelect) {
-        // Read from custom multi-select hidden inputs
-        const hiddenIds   = document.getElementById('s1_ip_ids_json');
-        const hiddenNames = document.getElementById('s1_ip_names_json');
-        fd.append('ip_ids',   hiddenIds   ? hiddenIds.value   : '[]');
-        fd.append('ip_names', hiddenNames ? hiddenNames.value : '[]');
+        fd.append('ip_id', ipSelect.value || 0);
+        const selectedOption = ipSelect.options[ipSelect.selectedIndex];
+        fd.append('ip_name', selectedOption?.getAttribute('data-name') || '');
     }
 
     const sec = document.getElementById('sec_' + sectionKey);
@@ -1780,8 +1466,6 @@ async function saveSection(sectionKey) {
                 if (el.checked) fd.append(el.name.replace(prefix,''), el.value);
                 continue;
             }
-            // Skip IP hidden inputs — handled separately above
-            if (el.id === 's1_ip_ids_json' || el.id === 's1_ip_names_json') continue;
             const serverName = el.name.startsWith(prefix) ? el.name.replace(prefix,'') : el.name;
             fd.append(serverName, el.value);
         }
@@ -1802,7 +1486,7 @@ async function saveSection(sectionKey) {
             showToast(data.error || 'Save failed', 'error');
         }
     } catch(e) {
-        showToast('Error saving section ? please try again', 'error');
+        showToast('Error saving section — please try again', 'error');
         console.error(e);
     }
 
@@ -1813,7 +1497,7 @@ async function saveSection(sectionKey) {
 
 async function finalSubmit() {
     if (!assessmentId) { showToast('No assessment to submit', 'error'); return; }
-    if (!confirm('Submit this county assessment as final? It will be marked as Submitted and cannot be edited.')) return;
+    if (!confirm('Submit this county assessment as final? It will be marked as Submitted.')) return;
 
     const fd = new FormData();
     fd.append('ajax_submit', '1');
@@ -1828,7 +1512,7 @@ async function finalSubmit() {
             showToast(data.error || 'Submission failed', 'error');
         }
     } catch(e) {
-        showToast('Network error ? please try again', 'error');
+        showToast('Network error — please try again', 'error');
     }
 }
 
@@ -1837,16 +1521,14 @@ if (document.getElementById('mainForm')) {
     updateProgress();
 }
 
-// Keyboard shortcut (only if not read-only)
-if (!isReadOnly) {
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            const unsaved = allSections.find(sk => !sectionsSaved.includes(sk));
-            if (unsaved) saveSection(unsaved);
-        }
-    });
-}
+// Keyboard shortcut
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        const unsaved = allSections.find(sk => !sectionsSaved.includes(sk));
+        if (unsaved) saveSection(unsaved);
+    }
+});
 </script>
 </body>
 </html>
