@@ -51,11 +51,10 @@ if (!$isAllowed) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TM - Management System</title>
-    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/ico" sizes="32x32" href="../assets/favicon/favicon.ico">
-    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="../assets/favicon/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assests/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assests/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assests/favicons/favicon-16x16.png">
+    <link rel="manifest" href="../assests/favicons/site.webmanifest">
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -426,7 +425,13 @@ if (!$isAllowed) {
 
                 <!-- Assets Section -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Assets</div>
+                    <div class="nav-section-title">Digitization</div>
+                    <div class="nav-item">
+                        <a href="../digitization/digital_innovation_investments.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/box.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Digital Registration
+                        </a>
+                    </div>
                     <div class="nav-item">
                         <a href="../assets-items/assets_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/box.svg" alt="" width="16" height="16" style="filter:invert(1)">

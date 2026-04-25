@@ -105,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - </title>
+    <link rel="apple-touch-icon" sizes="180x180" href="../assests/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assests/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assests/favicons/favicon-16x16.png">
+    <link rel="manifest" href="../assests/favicons/site.webmanifest">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ---------- RESET & GLOBAL ---------- */
@@ -408,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-container">
-        <img src="../assets/images/vuga_logo3_nbg.png" width="612" height="408" alt="">
+        <img src="../assets/images/vuga_logo3_nbg.png" width="378" height="162" alt="">
         <h4>Welcome Back</h4>
         <p style="color: #666; margin-bottom: 25px;">Please login to your account</p>
 
