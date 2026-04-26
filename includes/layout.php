@@ -356,7 +356,19 @@ if (!$isAllowed) {
                     </div>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-section-title">Trainings</div>
+                    <div class="nav-section-title">Training</div>
+                    <div class="nav-item">
+                        <a href="../new-trainings/create_training.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Create training
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="../new-trainings/planned_trainings.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                            <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
+                            Planned trainings
+                        </a>
+                    </div>
                     <div class="nav-item">
                         <a href="../trainings/training_dashboard.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/tasks.svg" alt="" width="16" height="16" style="filter:invert(1)">
@@ -380,7 +392,7 @@ if (!$isAllowed) {
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="../trainings/training_registration.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
+                        <a href="../trainings/participant_registration.php" target="contentFrame" class="nav-link" onclick="handleNavClick()">
                             <img src="../assets/fontawesome/svgs-full/solid/users.svg" alt="" width="16" height="16" style="filter:invert(1)">
                             Participants Registration
                         </a>
